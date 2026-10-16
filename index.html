@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>DeficitCalc</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1A14">
+<meta name="color-scheme" content="dark light">
+
+<!-- Instalação no ecrã principal do iPhone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DeficitCalc">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<style>
+  :root {
+    --fundo: #0E1A14;
+    --cartao: #16241D;
+    --borda: #26382E;
+    --texto: #E8F1EB;
+    --texto-fraco: #90A89A;
+    --acento: #37B36B;
+    --erro: #FF6B6B;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--texto);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
+    gap: 16px;
+  }
+  .cartao {
+    width: 100%;
+    max-width: 380px;
+    background: var(--cartao);
+    border: 1px solid var(--borda);
+    border-radius: 18px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 20px; }
+  button {
+    width: 100%;
+    font: inherit;
+    font-weight: 600;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--borda);
+    background: #1E3228;
+    color: var(--texto);
+    cursor: pointer;
+  }
+  button:active { opacity: .7; }
+  button[disabled] { opacity: .45; }
+  #btn-entrar { background: #fff; color: #1a1a1a; border-color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  #btn-entrar svg { width: 18px; height: 18px; flex: none; }
+  .manter { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; color: var(--texto-fraco); font-size: 14px; }
+  .manter input { width: 18px; height: 18px; accent-color: var(--acento); }
+  .avatar { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px; display: block; background: #23372C; object-fit: cover; }
+  .nome { font-size: 20px; font-weight: 650; margin: 0; }
+  .email { color: var(--texto-fraco); font-size: 14px; margin: 2px 0 20px; word-break: break-all; }
+  .aviso { border-left: 3px solid var(--acento); background: #15241C; color: var(--texto-fraco); font-size: 13px; text-align: left; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
+  #erro { display: none; width: 100%; max-width: 380px; border: 1px solid var(--erro); color: var(--erro); background: #26161A; border-radius: 12px; padding: 12px 14px; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  #diag { width: 100%; max-width: 380px; color: var(--texto-fraco); font-size: 12px; line-height: 1.7; border: 1px dashed var(--borda); border-radius: 12px; padding: 12px 14px; }
+  #diag b { color: var(--texto); font-weight: 600; }
+  .oculto { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="erro"></div>
+
+<main class="cartao" id="cartao">
+  <p class="sub" id="estado">A carregar…</p>
+</main>
+
+<section id="diag" class="oculto"></section>
+
+<!-- Modelos de ecrã -->
+<template id="t-entrada">
+  <h1>DeficitCalc</h1>
+  <p class="sub">Entra para registares o teu dia.</p>
+  <button id="btn-entrar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.6.4-2.4V6.5H1.4C.5 8.2 0 10 0 12s.5 3.8 1.4 5.5l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.5 1.8l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.5l4 3.1C6.3 6.8 8.9 4.8 12 4.8z"/></svg>
+    Entrar com Google
+  </button>
+  <label class="manter">
+    <input type="checkbox" id="chk-manter" checked>
+    Manter sessão iniciada
+  </label>
+</template>
+
+<template id="t-dentro">
+  <img class="avatar" id="avatar" alt="">
+  <p class="nome" id="nome"></p>
+  <p class="email" id="email"></p>
+  <div class="aviso" id="validade"></div>
+  <button id="btn-sair">Sair</button>
+</template>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { CONFIG } from './config.js';
+
+const DIA = 86400000;
+const K_INICIO = 'dc.sessao.inicio';   // timestamp do login (limite absoluto)
+const K_VISTO  = 'dc.sessao.visto';    // timestamp da última abertura (inatividade)
+const K_MANTER = 'dc.sessao.manter';   // '1' ou '0', fica sempre em localStorage
+
+const $ = (id) => document.getElementById(id);
+const cartao = $('cartao');
+
+// ---------- Erros visíveis no ecrã (não há consola no iPhone) ----------
+function mostrarErro(e) {
+  const cx = $('erro');
+  cx.style.display = 'block';
+  cx.textContent = (cx.textContent ? cx.textContent + '\n\n' : '') +
+    (e && e.message ? e.message : String(e));
+}
+window.addEventListener('error', (ev) => mostrarErro(ev.error || ev.message));
+window.addEventListener('unhandledrejection', (ev) => mostrarErro(ev.reason));
+
+// ---------- Escolha de armazenamento conforme "manter sessão" ----------
+// A escolha é feita antes do redirecionamento e lida no regresso.
+const manterSessao = localStorage.getItem(K_MANTER) !== '0';
+const store = manterSessao ? localStorage : sessionStorage;
+
+// O "code verifier" do PKCE é escrito antes de sair para o Google e lido no
+// regresso. Se a caixa "manter sessão" mudar nesse intervalo, o armazenamento
+// muda e o verifier desaparece. Por isso o verifier fica sempre em
+// localStorage; só a sessão é que respeita a escolha.
+const ehVerifier = (k) => String(k).includes('code-verifier');
+const armazenamento = {
+  getItem: (k) => (ehVerifier(k) ? localStorage : store).getItem(k),
+  setItem: (k, v) => (ehVerifier(k) ? localStorage : store).setItem(k, v),
+  removeItem: (k) => (ehVerifier(k) ? localStorage : store).removeItem(k),
+};
+
+const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    flowType: CONFIG.FLOW_TYPE,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: armazenamento,
+    storageKey: 'dc.auth',
+  },
+});
+
+// ---------- Regra de sessão: 30 dias renovados, máximo absoluto 60 ----------
+function limiteUltrapassado() {
+  const agora = Date.now();
+  const inicio = Number(store.getItem(K_INICIO) || 0);
+  const visto = Number(store.getItem(K_VISTO) || 0);
+  if (inicio && agora - inicio > CONFIG.SESSAO_DIAS_MAXIMO * DIA) return 'maximo';
+  if (visto && agora - visto > CONFIG.SESSAO_DIAS_INATIVIDADE * DIA) return 'inatividade';
+  return null;
+}
+
+function marcarAbertura(novoLogin) {
+  const agora = Date.now();
+  if (novoLogin || !store.getItem(K_INICIO)) store.setItem(K_INICIO, String(agora));
+  store.setItem(K_VISTO, String(agora));
+}
+
+function limparMarcas() {
+  store.removeItem(K_INICIO);
+  store.removeItem(K_VISTO);
+}
+
+function dataPT(ms) {
+  return new Date(ms).toLocaleString('pt-PT', {
+    timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+// ---------- Ecrãs ----------
+function ecra(idTemplate) {
+  cartao.replaceChildren($(idTemplate).content.cloneNode(true));
+}
+
+function mostrarEntrada(mensagem) {
+  ecra('t-entrada');
+  $('chk-manter').checked = manterSessao;
+  if (mensagem) {
+    const p = document.createElement('p');
+    p.className = 'sub';
+    p.style.marginTop = '14px';
+    p.textContent = mensagem;
+    cartao.append(p);
+  }
+  $('btn-entrar').addEventListener('click', entrar);
+  $('chk-manter').addEventListener('change', (ev) => {
+    localStorage.setItem(K_MANTER, ev.target.checked ? '1' : '0');
+  });
+}
+
+function mostrarDentro(user) {
+  ecra('t-dentro');
+  const m = user.user_metadata || {};
+  const nome = m.full_name || m.name || (user.email || '').split('@')[0];
+  $('nome').textContent = nome;
+  $('email').textContent = user.email || '';
+  const foto = m.avatar_url || m.picture;
+  if (foto) $('avatar').src = foto; else $('avatar').remove();
+
+  const inicio = Number(store.getItem(K_INICIO) || Date.now());
+  const fimInatividade = Date.now() + CONFIG.SESSAO_DIAS_INATIVIDADE * DIA;
+  const fimAbsoluto = inicio + CONFIG.SESSAO_DIAS_MAXIMO * DIA;
+  const fim = Math.min(fimInatividade, fimAbsoluto);
+  $('validade').textContent =
+    `Sessão válida até ${dataPT(fim)}. Renova-se sempre que abres a app, até ao limite de ${CONFIG.SESSAO_DIAS_MAXIMO} dias (${dataPT(fimAbsoluto)}).`;
+
+  $('btn-sair').addEventListener('click', sair);
+}
+
+// ---------- Ações ----------
+async function entrar() {
+  const btn = $('btn-entrar');
+  btn.disabled = true;
+  localStorage.setItem(K_MANTER, $('chk-manter').checked ? '1' : '0');
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: CONFIG.REDIRECT_TO,
+      queryParams: { prompt: 'select_account' },
+    },
+  });
+  if (error) { btn.disabled = false; mostrarErro(error); }
+}
+
+async function sair() {
+  $('btn-sair').disabled = true;
+  await supabase.auth.signOut();
+  limparMarcas();
+  mostrarEntrada();
+  diagnostico(null);
+}
+
+// ---------- Diagnóstico ----------
+function modoApresentacao() {
+  if (window.navigator.standalone === true) return 'instalada (iOS)';
+  if (window.matchMedia('(display-mode: standalone)').matches) return 'instalada';
+  return 'browser';
+}
+
+function diagnostico(session) {
+  const d = $('diag');
+  if (!CONFIG.DEBUG) { d.classList.add('oculto'); return; }
+  d.classList.remove('oculto');
+  const inicio = Number(store.getItem(K_INICIO) || 0);
+  const visto = Number(store.getItem(K_VISTO) || 0);
+  d.innerHTML = [
+    `<b>Modo:</b> ${modoApresentacao()}`,
+    `<b>Fluxo:</b> ${CONFIG.FLOW_TYPE}`,
+    `<b>Armazenamento:</b> ${manterSessao ? 'localStorage' : 'sessionStorage'}`,
+    `<b>Sessão Supabase:</b> ${session ? 'ativa' : 'nenhuma'}`,
+    session ? `<b>Token expira:</b> ${dataPT(session.expires_at * 1000)}` : '',
+    inicio ? `<b>Login em:</b> ${dataPT(inicio)}` : '',
+    visto ? `<b>Última abertura:</b> ${dataPT(visto)}` : '',
+  ].filter(Boolean).join('<br>');
+}
+
+// ---------- Arranque ----------
+async function arrancar() {
+  // Erro devolvido pelo Google / Supabase no URL
+  const params = new URLSearchParams(location.search || location.hash.replace('#', '?'));
+  const erroUrl = params.get('error_description') || params.get('error');
+  if (erroUrl) mostrarErro('Erro de autenticação: ' + erroUrl);
+
+  // Regresso do Google: conta como login novo e reinicia o limite de 60 dias.
+  const veioDoLogin = /[?#].*(code=|access_token=)/.test(location.href);
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) mostrarErro(error);
+  const session = data?.session || null;
+
+  // Limpa o URL depois do regresso do Google
+  if (location.search || location.hash) {
+    history.replaceState({}, '', location.pathname);
+  }
+
+  if (session) {
+    if (veioDoLogin) {
+      marcarAbertura(true);
+      mostrarDentro(session.user);
+      diagnostico(session);
+      return;
+    }
+    const limite = limiteUltrapassado();
+    if (limite) {
+      await supabase.auth.signOut();
+      limparMarcas();
+      mostrarEntrada(limite === 'maximo'
+        ? 'A sessão atingiu o limite de 60 dias. Entra outra vez.'
+        : 'A sessão esteve mais de 30 dias sem uso. Entra outra vez.');
+      diagnostico(null);
+      return;
+    }
+    marcarAbertura(false);
+    mostrarDentro(session.user);
+  } else {
+    mostrarEntrada();
+  }
+  diagnostico(session);
+}
+
+supabase.auth.onAuthStateChange((evento, session) => {
+  if (evento === 'SIGNED_IN' && session) {
+    marcarAbertura(!store.getItem(K_INICIO));
+    mostrarDentro(session.user);
+    diagnostico(session);
+  }
+  if (evento === 'SIGNED_OUT') {
+    mostrarEntrada();
+    diagnostico(null);
+  }
+});
+
+arrancar().catch(mostrarErro);
+</script>
+</body>
+</html>
