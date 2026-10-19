@@ -8,7 +8,7 @@ export const CONFIG = {
   SUPABASE_URL: 'https://dmjoafdbrgtrbpuqunwu.supabase.co',
 
   // Cola aqui a chave publicável do painel (Settings → API Keys), começa por sb_publishable_
-  SUPABASE_PUBLISHABLE_KEY: 'COLA_AQUI_A_CHAVE_sb_publishable_',
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_k8f6LgMyxqkdQ41BbZoqdw_7tTQkkO9',
 
   // Para onde o Google devolve depois do login. Tem de estar em
   // Supabase → Authentication → URL Configuration → Redirect URLs
