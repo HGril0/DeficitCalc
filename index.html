@@ -110,8 +110,8 @@
   <button id="btn-sair">Sair</button>
 </template>
 
+
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { CONFIG } from './config.js';
 
 const DIA = 86400000;
@@ -122,42 +122,42 @@ const K_MANTER = 'dc.sessao.manter';   // '1' ou '0', fica sempre em localStorag
 const $ = (id) => document.getElementById(id);
 const cartao = $('cartao');
 
+let supabase = null;       // preenchido em principal()
+let origemBiblioteca = ''; // qual CDN respondeu
+let manterSessao = localStorage.getItem(K_MANTER) !== '0';
+let store = manterSessao ? localStorage : sessionStorage;
+
 // ---------- Erros visíveis no ecrã (não há consola no iPhone) ----------
+function textoErro(e) {
+  if (!e) return 'Erro desconhecido.';
+  if (typeof e === 'string') {
+    return e === 'Script error.'
+      ? 'Script error. (erro vindo de código externo; o detalhe foi escondido pelo browser)'
+      : e;
+  }
+  const partes = [];
+  if (e.name) partes.push(e.name);
+  if (e.message) partes.push(e.message);
+  if (e.status) partes.push('estado HTTP ' + e.status);
+  return partes.length ? partes.join(': ') : String(e);
+}
+
 function mostrarErro(e) {
   const cx = $('erro');
   cx.style.display = 'block';
-  cx.textContent = (cx.textContent ? cx.textContent + '\n\n' : '') +
-    (e && e.message ? e.message : String(e));
+  cx.textContent = (cx.textContent ? cx.textContent + '\n\n' : '') + textoErro(e);
 }
+
 window.addEventListener('error', (ev) => mostrarErro(ev.error || ev.message));
 window.addEventListener('unhandledrejection', (ev) => mostrarErro(ev.reason));
 
-// ---------- Escolha de armazenamento conforme "manter sessão" ----------
-// A escolha é feita antes do redirecionamento e lida no regresso.
-const manterSessao = localStorage.getItem(K_MANTER) !== '0';
-const store = manterSessao ? localStorage : sessionStorage;
-
-// O "code verifier" do PKCE é escrito antes de sair para o Google e lido no
-// regresso. Se a caixa "manter sessão" mudar nesse intervalo, o armazenamento
-// muda e o verifier desaparece. Por isso o verifier fica sempre em
-// localStorage; só a sessão é que respeita a escolha.
-const ehVerifier = (k) => String(k).includes('code-verifier');
-const armazenamento = {
-  getItem: (k) => (ehVerifier(k) ? localStorage : store).getItem(k),
-  setItem: (k, v) => (ehVerifier(k) ? localStorage : store).setItem(k, v),
-  removeItem: (k) => (ehVerifier(k) ? localStorage : store).removeItem(k),
-};
-
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    flowType: CONFIG.FLOW_TYPE,
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: armazenamento,
-    storageKey: 'dc.auth',
-  },
-});
+// ---------- Datas ----------
+function dataPT(ms) {
+  return new Date(ms).toLocaleString('pt-PT', {
+    timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
 
 // ---------- Regra de sessão: 30 dias renovados, máximo absoluto 60 ----------
 function limiteUltrapassado() {
@@ -167,6 +167,15 @@ function limiteUltrapassado() {
   if (inicio && agora - inicio > CONFIG.SESSAO_DIAS_MAXIMO * DIA) return 'maximo';
   if (visto && agora - visto > CONFIG.SESSAO_DIAS_INATIVIDADE * DIA) return 'inatividade';
   return null;
+}
+
+// Os "code verifier" de logins anteriores ficam para trás em localStorage.
+// São segredos de curta duração; não há razão para os manter depois de a
+// sessão estar criada.
+function limparVerifiersAntigos(exceto) {
+  for (const k of Object.keys(localStorage)) {
+    if (k.includes('code-verifier') && k !== exceto) localStorage.removeItem(k);
+  }
 }
 
 function marcarAbertura(novoLogin) {
@@ -180,19 +189,12 @@ function limparMarcas() {
   store.removeItem(K_VISTO);
 }
 
-function dataPT(ms) {
-  return new Date(ms).toLocaleString('pt-PT', {
-    timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-}
-
 // ---------- Ecrãs ----------
 function ecra(idTemplate) {
   cartao.replaceChildren($(idTemplate).content.cloneNode(true));
 }
 
-function mostrarEntrada(mensagem) {
+function mostrarEntrada(mensagem, desativado) {
   ecra('t-entrada');
   $('chk-manter').checked = manterSessao;
   if (mensagem) {
@@ -202,7 +204,11 @@ function mostrarEntrada(mensagem) {
     p.textContent = mensagem;
     cartao.append(p);
   }
-  $('btn-entrar').addEventListener('click', entrar);
+  if (desativado) {
+    $('btn-entrar').disabled = true;
+  } else {
+    $('btn-entrar').addEventListener('click', entrar);
+  }
   $('chk-manter').addEventListener('change', (ev) => {
     localStorage.setItem(K_MANTER, ev.target.checked ? '1' : '0');
   });
@@ -231,21 +237,39 @@ function mostrarDentro(user) {
 async function entrar() {
   const btn = $('btn-entrar');
   btn.disabled = true;
-  localStorage.setItem(K_MANTER, $('chk-manter').checked ? '1' : '0');
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: CONFIG.REDIRECT_TO,
-      queryParams: { prompt: 'select_account' },
-    },
-  });
-  if (error) { btn.disabled = false; mostrarErro(error); }
+  try {
+    localStorage.setItem(K_MANTER, $('chk-manter').checked ? '1' : '0');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: CONFIG.REDIRECT_TO,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    if (error) throw error;
+    // Se em 4 segundos não saímos da página, algo bloqueou o reencaminhamento.
+    setTimeout(() => {
+      if (!document.hidden) {
+        btn.disabled = false;
+        mostrarErro('O reencaminhamento para o Google não aconteceu. '
+          + 'Confirma no Supabase que ' + CONFIG.REDIRECT_TO + ' está em Redirect URLs.');
+      }
+    }, 4000);
+  } catch (e) {
+    btn.disabled = false;
+    mostrarErro(e);
+  }
 }
 
 async function sair() {
   $('btn-sair').disabled = true;
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    mostrarErro(e);
+  }
   limparMarcas();
+  limparVerifiersAntigos();
   mostrarEntrada();
   diagnostico(null);
 }
@@ -263,10 +287,13 @@ function diagnostico(session) {
   d.classList.remove('oculto');
   const inicio = Number(store.getItem(K_INICIO) || 0);
   const visto = Number(store.getItem(K_VISTO) || 0);
+  const chave = (CONFIG.SUPABASE_PUBLISHABLE_KEY || '').trim();
   d.innerHTML = [
     `<b>Modo:</b> ${modoApresentacao()}`,
     `<b>Fluxo:</b> ${CONFIG.FLOW_TYPE}`,
     `<b>Armazenamento:</b> ${manterSessao ? 'localStorage' : 'sessionStorage'}`,
+    `<b>Chave:</b> ${chave.slice(0, 15)}… (${chave.length} caracteres)`,
+    `<b>Biblioteca:</b> ${origemBiblioteca ? origemBiblioteca.replace('https://cdn.jsdelivr.net/npm/', '') : 'não carregada'}`,
     `<b>Sessão Supabase:</b> ${session ? 'ativa' : 'nenhuma'}`,
     session ? `<b>Token expira:</b> ${dataPT(session.expires_at * 1000)}` : '',
     inicio ? `<b>Login em:</b> ${dataPT(inicio)}` : '',
@@ -274,9 +301,84 @@ function diagnostico(session) {
   ].filter(Boolean).join('<br>');
 }
 
+// ---------- Carregamento da biblioteca ----------
+// Versão fixa primeiro (previsível), alternativas a seguir (resistente a falhas
+// de CDN). Importar assim, e não com import estático, permite dizer no ecrã
+// que foi o carregamento que falhou em vez de deixar a página em branco.
+const FONTES = [
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/+esm',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
+  'https://esm.sh/@supabase/supabase-js@2.112.4',
+];
+
+async function carregarBiblioteca() {
+  let ultimo = null;
+  for (const url of FONTES) {
+    try {
+      const mod = await import(url);
+      if (mod && mod.createClient) { origemBiblioteca = url; return mod.createClient; }
+    } catch (e) { ultimo = e; }
+  }
+  throw new Error('Não foi possível carregar a biblioteca do Supabase de nenhuma origem. '
+    + 'Verifica a ligação à internet. Último erro: ' + textoErro(ultimo));
+}
+
 // ---------- Arranque ----------
-async function arrancar() {
-  // Erro devolvido pelo Google / Supabase no URL
+async function principal() {
+  // 1. A chave tem de estar preenchida. Sem isto, tudo o resto falha de forma
+  //    confusa: o botão fica sem efeito e o erro que aparece não diz porquê.
+  const chave = (CONFIG.SUPABASE_PUBLISHABLE_KEY || '').trim();
+  const chaveOk = /^sb_publishable_[A-Za-z0-9_-]{10,}$/.test(chave)
+               || /^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(chave);
+  if (!chaveOk) {
+    mostrarErro('Falta a chave publicável. Abre o config.js e substitui o valor de '
+      + 'SUPABASE_PUBLISHABLE_KEY pela chave do painel do Supabase '
+      + '(Settings → API Keys), que começa por sb_publishable_. '
+      + 'Valor atual: "' + (chave.slice(0, 20) || '(vazio)') + '…"');
+    mostrarEntrada('Configuração incompleta.', true);
+    diagnostico(null);
+    return;
+  }
+
+  // 2. Biblioteca
+  const createClient = await carregarBiblioteca();
+
+  // 3. O "code verifier" do PKCE é escrito antes de sair para o Google e lido no
+  //    regresso. Se a caixa "manter sessão" mudar nesse intervalo, o
+  //    armazenamento mudava e o verifier desaparecia. Por isso o verifier fica
+  //    sempre em localStorage; só a sessão respeita a escolha.
+  const ehVerifier = (k) => String(k).includes('code-verifier');
+  const armazenamento = {
+    getItem: (k) => (ehVerifier(k) ? localStorage : store).getItem(k),
+    setItem: (k, v) => (ehVerifier(k) ? localStorage : store).setItem(k, v),
+    removeItem: (k) => (ehVerifier(k) ? localStorage : store).removeItem(k),
+  };
+
+  supabase = createClient(CONFIG.SUPABASE_URL, chave, {
+    auth: {
+      flowType: CONFIG.FLOW_TYPE,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: armazenamento,
+      storageKey: 'dc.auth',
+    },
+  });
+
+  supabase.auth.onAuthStateChange((evento, session) => {
+    if (evento === 'SIGNED_IN' && session) {
+      limparVerifiersAntigos();
+      marcarAbertura(!store.getItem(K_INICIO));
+      mostrarDentro(session.user);
+      diagnostico(session);
+    }
+    if (evento === 'SIGNED_OUT') {
+      mostrarEntrada();
+      diagnostico(null);
+    }
+  });
+
+  // 4. Erro devolvido pelo Google / Supabase no URL
   const params = new URLSearchParams(location.search || location.hash.replace('#', '?'));
   const erroUrl = params.get('error_description') || params.get('error');
   if (erroUrl) mostrarErro('Erro de autenticação: ' + erroUrl);
@@ -295,6 +397,7 @@ async function arrancar() {
 
   if (session) {
     if (veioDoLogin) {
+      limparVerifiersAntigos();
       marcarAbertura(true);
       mostrarDentro(session.user);
       diagnostico(session);
@@ -318,19 +421,10 @@ async function arrancar() {
   diagnostico(session);
 }
 
-supabase.auth.onAuthStateChange((evento, session) => {
-  if (evento === 'SIGNED_IN' && session) {
-    marcarAbertura(!store.getItem(K_INICIO));
-    mostrarDentro(session.user);
-    diagnostico(session);
-  }
-  if (evento === 'SIGNED_OUT') {
-    mostrarEntrada();
-    diagnostico(null);
-  }
+principal().catch((e) => {
+  mostrarErro(e);
+  try { mostrarEntrada('Não foi possível arrancar.', true); diagnostico(null); } catch (_) {}
 });
-
-arrancar().catch(mostrarErro);
 </script>
 </body>
 </html>
