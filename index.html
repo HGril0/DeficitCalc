@@ -102,6 +102,14 @@
   </label>
 </template>
 
+<template id="t-espera">
+  <img class="avatar" id="avatar" alt="">
+  <p class="nome" id="nome"></p>
+  <p class="email" id="email"></p>
+  <div class="aviso" id="espera-texto"></div>
+  <button id="btn-sair">Sair</button>
+</template>
+
 <template id="t-dentro">
   <img class="avatar" id="avatar" alt="">
   <p class="nome" id="nome"></p>
@@ -214,14 +222,54 @@ function mostrarEntrada(mensagem, desativado) {
   });
 }
 
-function mostrarDentro(user) {
-  ecra('t-dentro');
+// O ecra de espera e' cortesia, nao e' seguranca: quem manda e' a RLS nas
+// tabelas de dados. Por isso, se a leitura falhar (tabela ou coluna ainda nao
+// criadas), deixamos passar e anotamos no diagnostico, em vez de trancar o
+// utilizador a' porta por causa de um erro de configuracao.
+let estadoPerfil = { lido: false };
+
+async function lerPerfil() {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('nome, aprovado')
+      .maybeSingle();
+    if (error) return { lido: false, motivo: error.message };
+    if (!data)  return { lido: false, motivo: 'sem linha em profiles' };
+    return { lido: true, aprovado: data.aprovado === true, nome: data.nome };
+  } catch (e) {
+    return { lido: false, motivo: (e && e.message) ? e.message : String(e) };
+  }
+}
+
+async function entrarNaApp(user, session) {
+  estadoPerfil = await lerPerfil();
+  if (estadoPerfil.lido && !estadoPerfil.aprovado) mostrarEspera(user);
+  else mostrarDentro(user);
+  diagnostico(session);
+}
+
+function cabecalhoPessoa(user) {
   const m = user.user_metadata || {};
-  const nome = m.full_name || m.name || (user.email || '').split('@')[0];
-  $('nome').textContent = nome;
+  $('nome').textContent = m.full_name || m.name || (user.email || '').split('@')[0];
   $('email').textContent = user.email || '';
   const foto = m.avatar_url || m.picture;
   if (foto) $('avatar').src = foto; else $('avatar').remove();
+}
+
+function mostrarEspera(user) {
+  ecra('t-espera');
+  cabecalhoPessoa(user);
+  $('espera-texto').textContent =
+    'A tua conta ainda não foi autorizada. Entraste com o Google, mas falta alguém '
+    + 'dar-te acesso à app. Quando isso acontecer, é só voltar a abrir — não precisas '
+    + 'de entrar outra vez.';
+  $('btn-sair').addEventListener('click', sair);
+}
+
+function mostrarDentro(user) {
+  ecra('t-dentro');
+  cabecalhoPessoa(user);
 
   const inicio = Number(store.getItem(K_INICIO) || Date.now());
   const fimInatividade = Date.now() + CONFIG.SESSAO_DIAS_INATIVIDADE * DIA;
@@ -295,6 +343,7 @@ function diagnostico(session) {
     `<b>Chave:</b> ${chave.slice(0, 15)}… (${chave.length} caracteres)`,
     `<b>Biblioteca:</b> ${origemBiblioteca ? origemBiblioteca.replace('https://cdn.jsdelivr.net/npm/', '') : 'não carregada'}`,
     `<b>Sessão Supabase:</b> ${session ? 'ativa' : 'nenhuma'}`,
+    session ? `<b>Perfil:</b> ${estadoPerfil.lido ? (estadoPerfil.aprovado ? 'aprovado' : 'à espera') : 'não lido (' + (estadoPerfil.motivo || '?') + ')'}` : '',
     session ? `<b>Token expira:</b> ${dataPT(session.expires_at * 1000)}` : '',
     inicio ? `<b>Login em:</b> ${dataPT(inicio)}` : '',
     visto ? `<b>Última abertura:</b> ${dataPT(visto)}` : '',
@@ -365,12 +414,11 @@ async function principal() {
     },
   });
 
-  supabase.auth.onAuthStateChange((evento, session) => {
+  supabase.auth.onAuthStateChange(async (evento, session) => {
     if (evento === 'SIGNED_IN' && session) {
       limparVerifiersAntigos();
       marcarAbertura(!store.getItem(K_INICIO));
-      mostrarDentro(session.user);
-      diagnostico(session);
+      entrarNaApp(session.user, session).catch(mostrarErro);
     }
     if (evento === 'SIGNED_OUT') {
       mostrarEntrada();
@@ -399,8 +447,7 @@ async function principal() {
     if (veioDoLogin) {
       limparVerifiersAntigos();
       marcarAbertura(true);
-      mostrarDentro(session.user);
-      diagnostico(session);
+      await entrarNaApp(session.user, session);
       return;
     }
     const limite = limiteUltrapassado();
@@ -414,10 +461,10 @@ async function principal() {
       return;
     }
     marcarAbertura(false);
-    mostrarDentro(session.user);
-  } else {
-    mostrarEntrada();
+    await entrarNaApp(session.user, session);
+    return;
   }
+  mostrarEntrada();
   diagnostico(session);
 }
 
