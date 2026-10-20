@@ -17,11 +17,19 @@ create table if not exists public.autorizados (
 );
 
 alter table public.autorizados enable row level security;
-alter table public.autorizados force row level security;
+-- Mesmo motivo do profiles, e um pior: com force, nem o gatilho conseguiria
+-- LER esta lista, e toda a gente nasceria por aprovar sem erro nenhum à vista.
+alter table public.autorizados no force row level security;
+-- O que protege esta tabela não é a RLS, é não existir permissão nenhuma
+-- nem política nenhuma para anon e authenticated. Pela API é invisível.
 revoke all on public.autorizados from anon, authenticated;
 
 comment on table public.autorizados is
   'Emails com acesso. Editada só pelo painel. Sem políticas: ninguém a lê pela API.';
+
+-- Limpa marcadores de exemplo que tenham entrado numa execução anterior,
+-- para o ficheiro poder ser corrido vezes sem conta sem deixar lixo.
+delete from public.autorizados where email like '%@exemplo.com';
 
 -- Troca os marcadores pelos emails reais ANTES de correr, na janela do Supabase.
 -- Acrescenta ou tira linhas conforme precisares.

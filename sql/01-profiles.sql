@@ -22,8 +22,15 @@ comment on column public.profiles.admin is 'Só para o painel de custos. O próp
 -- 2. RLS — ligada antes de existir qualquer dado
 -- ---------------------------------------------------------------------------
 alter table public.profiles enable row level security;
--- force: nem o dono da tabela escapa às políticas
-alter table public.profiles force row level security;
+
+-- NÃO usar "force row level security" aqui. Testado num Postgres a sério:
+-- com force ligado, o gatilho que cria o perfil ao primeiro login passa a
+-- estar sujeito às políticas. Como nessa altura ainda não há sessão,
+-- auth.uid() é nulo, o insert é recusado, e por o gatilho estar pendurado no
+-- auth.users isso aborta o registo inteiro — a pessoa não consegue sequer
+-- entrar. O force também não protege nada que interesse: a API liga-se
+-- sempre como anon ou authenticated, nunca como dono da tabela.
+alter table public.profiles no force row level security;
 
 drop policy if exists "ler o proprio perfil"      on public.profiles;
 drop policy if exists "criar o proprio perfil"    on public.profiles;
