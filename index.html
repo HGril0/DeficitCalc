@@ -75,6 +75,9 @@
   #erro { display: none; width: 100%; max-width: 380px; border: 1px solid var(--erro); color: var(--erro); background: #26161A; border-radius: 12px; padding: 12px 14px; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
   #diag { width: 100%; max-width: 380px; color: var(--texto-fraco); font-size: 12px; line-height: 1.7; border: 1px dashed var(--borda); border-radius: 12px; padding: 12px 14px; }
   #diag b { color: var(--texto); font-weight: 600; }
+  .botao-ligacao { display:block; width:100%; font-weight:600; padding:14px 16px;
+    border-radius:12px; border:1px solid var(--acento); background:#1E3228;
+    color:var(--texto); text-decoration:none; margin-bottom:16px; }
   .oculto { display: none !important; }
 </style>
 </head>
@@ -114,6 +117,7 @@
   <img class="avatar" id="avatar" alt="">
   <p class="nome" id="nome"></p>
   <p class="email" id="email"></p>
+  <a class="botao-ligacao" href="perfil.html">Perfil e objetivo</a>
   <div class="aviso" id="validade"></div>
   <button id="btn-sair">Sair</button>
 </template>
