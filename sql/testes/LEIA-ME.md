@@ -15,7 +15,9 @@ psql -h /tmp -p 5433 -U postgres -f sql/01-profiles.sql
 psql -h /tmp -p 5433 -U postgres -f sql/02-porteiro.sql
 psql -h /tmp -p 5433 -U postgres -f sql/03-perfil-objetivo.sql
 psql -h /tmp -p 5433 -U postgres -f sql/testes/01-bateria.sql        # perfis e porteiro
-psql -h /tmp -p 5433 -U postgres -f sql/testes/02-bateria-pesos.sql  # pesos e gasto estimado
+psql -h /tmp -p 5433 -U postgres -f sql/04-registos.sql
+psql -h /tmp -p 5433 -U postgres -f sql/testes/02-bateria-pesos.sql    # pesos e gasto estimado
+psql -h /tmp -p 5433 -U postgres -f sql/testes/03-bateria-registos.sql # registo diário
 ```
 
 ## O pior caso
@@ -44,11 +46,13 @@ bateria a testar o vazio. Apaga também as funções:
 
 ```sql
 drop schema if exists auth cascade;
-drop table if exists public.pesos, public.profiles, public.autorizados, public.resultado cascade;
+drop table if exists public.registos, public.pesos, public.profiles, public.autorizados, public.resultado cascade;
 drop function if exists public.criar_perfil_novo_utilizador() cascade;
 drop function if exists public.marcar_atualizacao() cascade;
 drop function if exists public.esta_aprovado() cascade;
 drop function if exists public.estimar_gasto(uuid) cascade;
+drop function if exists public.dia(date) cascade;
+drop function if exists public.ultimos_dias(int) cascade;
 drop function if exists public.verifica(text,boolean,text) cascade;
 ```
 
