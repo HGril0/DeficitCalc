@@ -4,10 +4,8 @@
 <meta charset="utf-8">
 <title>DeficitCalc</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0E1A14">
+<meta name="theme-color" content="#04060A">
 <meta name="color-scheme" content="dark light">
-
-<!-- Instalação no ecrã principal do iPhone -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,87 +13,48 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+<script type="module" src="tema.js"></script>
 <style>
-  :root {
-    --fundo: #0E1A14;
-    --cartao: #16241D;
-    --borda: #26382E;
-    --texto: #E8F1EB;
-    --texto-fraco: #90A89A;
-    --acento: #37B36B;
-    --erro: #FF6B6B;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    background: var(--fundo);
-    color: var(--texto);
-    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
-    gap: 16px;
-  }
-  .cartao {
-    width: 100%;
-    max-width: 380px;
-    background: var(--cartao);
-    border: 1px solid var(--borda);
-    border-radius: 18px;
-    padding: 24px 20px;
-    text-align: center;
-  }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.3px; }
-  .sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 20px; }
-  button {
-    width: 100%;
-    font: inherit;
-    font-weight: 600;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--borda);
-    background: #1E3228;
-    color: var(--texto);
-    cursor: pointer;
-  }
-  button:active { opacity: .7; }
-  button[disabled] { opacity: .45; }
-  #btn-entrar { background: #fff; color: #1a1a1a; border-color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  body { display: flex; flex-direction: column; justify-content: center; min-height: 100vh; }
+  .cartao { padding: 26px 22px; text-align: center; }
+  h1 { font-size: 23px; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .sub { color: var(--fraco); font-size: 14px; margin: 0 0 22px; }
+  #btn-entrar { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+                background: #FFFFFF; color: #1A1A1A; font-weight: 600; padding: 15px;
+                border-radius: 16px; border: 1px solid rgba(0,0,0,0.08); }
   #btn-entrar svg { width: 18px; height: 18px; flex: none; }
-  .manter { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; color: var(--texto-fraco); font-size: 14px; }
-  .manter input { width: 18px; height: 18px; accent-color: var(--acento); }
-  .avatar { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px; display: block; background: #23372C; object-fit: cover; }
-  .nome { font-size: 20px; font-weight: 650; margin: 0; }
-  .email { color: var(--texto-fraco); font-size: 14px; margin: 2px 0 20px; word-break: break-all; }
-  .aviso { border-left: 3px solid var(--acento); background: #15241C; color: var(--texto-fraco); font-size: 13px; text-align: left; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
-  #erro { display: none; width: 100%; max-width: 380px; border: 1px solid var(--erro); color: var(--erro); background: #26161A; border-radius: 12px; padding: 12px 14px; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
-  #diag { width: 100%; max-width: 380px; color: var(--texto-fraco); font-size: 12px; line-height: 1.7; border: 1px dashed var(--borda); border-radius: 12px; padding: 12px 14px; }
+  .manter { display: flex; align-items: center; justify-content: center; gap: 9px;
+            margin-top: 16px; color: var(--fraco); font-size: 14px; }
+  .manter input { width: 19px; height: 19px; accent-color: var(--acento); }
+  .avatar { width: 74px; height: 74px; border-radius: 50%; margin: 0 auto 12px; display: block;
+            background: var(--campo); object-fit: cover; }
+  .nome { font-size: 20px; font-weight: 600; margin: 0; }
+  .email { color: var(--fraco); font-size: 14px; margin: 2px 0 20px; word-break: break-all; }
+  .nota { border-left: 3px solid var(--acento); background: var(--acento-suave); color: var(--texto);
+          font-size: 13px; text-align: left; padding: 11px 13px; border-radius: 10px; margin-bottom: 18px; }
+  #diag { color: var(--fraco); font-size: 12px; line-height: 1.7; border: 1px dashed var(--vidro-borda);
+          border-radius: 14px; padding: 12px 14px; margin-top: 14px; }
   #diag b { color: var(--texto); font-weight: 600; }
-  .botao-ligacao { display:block; width:100%; font-weight:600; padding:14px 16px;
-    border-radius:12px; border:1px solid var(--acento); background:#1E3228;
-    color:var(--texto); text-decoration:none; margin-bottom:16px; }
-  .oculto { display: none !important; }
 </style>
 </head>
 <body>
 
-<div id="erro"></div>
+<div id="erro" class="aviso erro oculto"></div>
 
-<main class="cartao" id="cartao">
+<main class="vidro cartao" id="cartao">
   <p class="sub" id="estado">A carregar…</p>
 </main>
 
 <section id="diag" class="oculto"></section>
 
-<!-- Modelos de ecrã -->
 <template id="t-entrada">
   <h1>DeficitCalc</h1>
   <p class="sub">Entra para registares o teu dia.</p>
-  <button id="btn-entrar">
+  <button id="btn-entrar" class="toque">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1C3.4 21.3 7.4 24 12 24z"/><path fill="#FBBC05" d="M5.4 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.6.4-2.4V6.5H1.4C.5 8.2 0 10 0 12s.5 3.8 1.4 5.5l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.5 1.8l3.4-3.4C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.5l4 3.1C6.3 6.8 8.9 4.8 12 4.8z"/></svg>
     Entrar com Google
   </button>
@@ -109,37 +68,28 @@
   <img class="avatar" id="avatar" alt="">
   <p class="nome" id="nome"></p>
   <p class="email" id="email"></p>
-  <div class="aviso" id="espera-texto"></div>
-  <button id="btn-sair">Sair</button>
+  <div class="nota" id="espera-texto"></div>
+  <button id="btn-sair" class="principal toque">Sair</button>
 </template>
-
-<template id="t-dentro">
-  <img class="avatar" id="avatar" alt="">
-  <p class="nome" id="nome"></p>
-  <p class="email" id="email"></p>
-  <a class="botao-ligacao" href="perfil.html">Perfil e objetivo</a>
-  <div class="aviso" id="validade"></div>
-  <button id="btn-sair">Sair</button>
-</template>
-
 
 <script type="module">
 import { CONFIG } from './config.js';
 
 const DIA = 86400000;
-const K_INICIO = 'dc.sessao.inicio';   // timestamp do login (limite absoluto)
-const K_VISTO  = 'dc.sessao.visto';    // timestamp da última abertura (inatividade)
-const K_MANTER = 'dc.sessao.manter';   // '1' ou '0', fica sempre em localStorage
+const K_INICIO = 'dc.sessao.inicio';
+const K_VISTO  = 'dc.sessao.visto';
+const K_MANTER = 'dc.sessao.manter';
 
 const $ = (id) => document.getElementById(id);
 const cartao = $('cartao');
 
-let supabase = null;       // preenchido em principal()
-let origemBiblioteca = ''; // qual CDN respondeu
-let manterSessao = localStorage.getItem(K_MANTER) !== '0';
-let store = manterSessao ? localStorage : sessionStorage;
+let supabase = null;
+let origemBiblioteca = '';
+let estadoPerfil = { lido: false };
+const manterSessao = localStorage.getItem(K_MANTER) !== '0';
+const store = manterSessao ? localStorage : sessionStorage;
 
-// ---------- Erros visíveis no ecrã (não há consola no iPhone) ----------
+// ---------- erros à vista, que no iPhone não há consola ----------
 function textoErro(e) {
   if (!e) return 'Erro desconhecido.';
   if (typeof e === 'string') {
@@ -147,23 +97,20 @@ function textoErro(e) {
       ? 'Script error. (erro vindo de código externo; o detalhe foi escondido pelo browser)'
       : e;
   }
-  const partes = [];
-  if (e.name) partes.push(e.name);
-  if (e.message) partes.push(e.message);
-  if (e.status) partes.push('estado HTTP ' + e.status);
-  return partes.length ? partes.join(': ') : String(e);
+  const p = [];
+  if (e.name) p.push(e.name);
+  if (e.message) p.push(e.message);
+  if (e.status) p.push('estado HTTP ' + e.status);
+  return p.length ? p.join(': ') : String(e);
 }
-
 function mostrarErro(e) {
   const cx = $('erro');
-  cx.style.display = 'block';
+  cx.classList.remove('oculto');
   cx.textContent = (cx.textContent ? cx.textContent + '\n\n' : '') + textoErro(e);
 }
-
 window.addEventListener('error', (ev) => mostrarErro(ev.error || ev.message));
 window.addEventListener('unhandledrejection', (ev) => mostrarErro(ev.reason));
 
-// ---------- Datas ----------
 function dataPT(ms) {
   return new Date(ms).toLocaleString('pt-PT', {
     timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric',
@@ -171,7 +118,7 @@ function dataPT(ms) {
   });
 }
 
-// ---------- Regra de sessão: 30 dias renovados, máximo absoluto 60 ----------
+// ---------- sessão: 30 dias renovados, 60 no máximo ----------
 function limiteUltrapassado() {
   const agora = Date.now();
   const inicio = Number(store.getItem(K_INICIO) || 0);
@@ -180,31 +127,23 @@ function limiteUltrapassado() {
   if (visto && agora - visto > CONFIG.SESSAO_DIAS_INATIVIDADE * DIA) return 'inatividade';
   return null;
 }
-
-// Os "code verifier" de logins anteriores ficam para trás em localStorage.
-// São segredos de curta duração; não há razão para os manter depois de a
-// sessão estar criada.
-function limparVerifiersAntigos(exceto) {
-  for (const k of Object.keys(localStorage)) {
-    if (k.includes('code-verifier') && k !== exceto) localStorage.removeItem(k);
-  }
-}
-
 function marcarAbertura(novoLogin) {
   const agora = Date.now();
   if (novoLogin || !store.getItem(K_INICIO)) store.setItem(K_INICIO, String(agora));
   store.setItem(K_VISTO, String(agora));
 }
+function limparMarcas() { store.removeItem(K_INICIO); store.removeItem(K_VISTO); }
 
-function limparMarcas() {
-  store.removeItem(K_INICIO);
-  store.removeItem(K_VISTO);
+// Os "code verifier" de logins anteriores são segredos de curta duração.
+// Não há razão para ficarem lá depois de a sessão estar criada.
+function limparVerifiersAntigos() {
+  for (const k of Object.keys(localStorage)) {
+    if (k.includes('code-verifier')) localStorage.removeItem(k);
+  }
 }
 
-// ---------- Ecrãs ----------
-function ecra(idTemplate) {
-  cartao.replaceChildren($(idTemplate).content.cloneNode(true));
-}
+// ---------- ecrãs ----------
+function ecra(id) { cartao.replaceChildren($(id).content.cloneNode(true)); }
 
 function mostrarEntrada(mensagem, desativado) {
   ecra('t-entrada');
@@ -212,80 +151,31 @@ function mostrarEntrada(mensagem, desativado) {
   if (mensagem) {
     const p = document.createElement('p');
     p.className = 'sub';
-    p.style.marginTop = '14px';
+    p.style.margin = '16px 0 0';
     p.textContent = mensagem;
     cartao.append(p);
   }
-  if (desativado) {
-    $('btn-entrar').disabled = true;
-  } else {
-    $('btn-entrar').addEventListener('click', entrar);
-  }
+  if (desativado) $('btn-entrar').disabled = true;
+  else $('btn-entrar').addEventListener('click', entrar);
   $('chk-manter').addEventListener('change', (ev) => {
     localStorage.setItem(K_MANTER, ev.target.checked ? '1' : '0');
   });
 }
 
-// O ecra de espera e' cortesia, nao e' seguranca: quem manda e' a RLS nas
-// tabelas de dados. Por isso, se a leitura falhar (tabela ou coluna ainda nao
-// criadas), deixamos passar e anotamos no diagnostico, em vez de trancar o
-// utilizador a' porta por causa de um erro de configuracao.
-let estadoPerfil = { lido: false };
-
-async function lerPerfil() {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('nome, aprovado')
-      .maybeSingle();
-    if (error) return { lido: false, motivo: error.message };
-    if (!data)  return { lido: false, motivo: 'sem linha em profiles' };
-    return { lido: true, aprovado: data.aprovado === true, nome: data.nome };
-  } catch (e) {
-    return { lido: false, motivo: (e && e.message) ? e.message : String(e) };
-  }
-}
-
-async function entrarNaApp(user, session) {
-  estadoPerfil = await lerPerfil();
-  if (estadoPerfil.lido && !estadoPerfil.aprovado) mostrarEspera(user);
-  else mostrarDentro(user);
-  diagnostico(session);
-}
-
-function cabecalhoPessoa(user) {
+function mostrarEspera(user) {
+  ecra('t-espera');
   const m = user.user_metadata || {};
   $('nome').textContent = m.full_name || m.name || (user.email || '').split('@')[0];
   $('email').textContent = user.email || '';
   const foto = m.avatar_url || m.picture;
   if (foto) $('avatar').src = foto; else $('avatar').remove();
-}
-
-function mostrarEspera(user) {
-  ecra('t-espera');
-  cabecalhoPessoa(user);
   $('espera-texto').textContent =
-    'A tua conta ainda não foi autorizada. Entraste com o Google, mas falta alguém '
-    + 'dar-te acesso à app. Quando isso acontecer, é só voltar a abrir — não precisas '
-    + 'de entrar outra vez.';
+    'A tua conta ainda não foi autorizada. Entraste com o Google, mas falta alguém dar-te '
+    + 'acesso à app. Quando isso acontecer, é só voltar a abrir — não precisas de entrar outra vez.';
   $('btn-sair').addEventListener('click', sair);
 }
 
-function mostrarDentro(user) {
-  ecra('t-dentro');
-  cabecalhoPessoa(user);
-
-  const inicio = Number(store.getItem(K_INICIO) || Date.now());
-  const fimInatividade = Date.now() + CONFIG.SESSAO_DIAS_INATIVIDADE * DIA;
-  const fimAbsoluto = inicio + CONFIG.SESSAO_DIAS_MAXIMO * DIA;
-  const fim = Math.min(fimInatividade, fimAbsoluto);
-  $('validade').textContent =
-    `Sessão válida até ${dataPT(fim)}. Renova-se sempre que abres a app, até ao limite de ${CONFIG.SESSAO_DIAS_MAXIMO} dias (${dataPT(fimAbsoluto)}).`;
-
-  $('btn-sair').addEventListener('click', sair);
-}
-
-// ---------- Ações ----------
+// ---------- ações ----------
 async function entrar() {
   const btn = $('btn-entrar');
   btn.disabled = true;
@@ -293,18 +183,14 @@ async function entrar() {
     localStorage.setItem(K_MANTER, $('chk-manter').checked ? '1' : '0');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: CONFIG.REDIRECT_TO,
-        queryParams: { prompt: 'select_account' },
-      },
+      options: { redirectTo: CONFIG.REDIRECT_TO, queryParams: { prompt: 'select_account' } },
     });
     if (error) throw error;
-    // Se em 4 segundos não saímos da página, algo bloqueou o reencaminhamento.
     setTimeout(() => {
       if (!document.hidden) {
         btn.disabled = false;
-        mostrarErro('O reencaminhamento para o Google não aconteceu. '
-          + 'Confirma no Supabase que ' + CONFIG.REDIRECT_TO + ' está em Redirect URLs.');
+        mostrarErro('O reencaminhamento para o Google não aconteceu. Confirma no Supabase que '
+          + CONFIG.REDIRECT_TO + ' está em Redirect URLs.');
       }
     }, 4000);
   } catch (e) {
@@ -315,31 +201,26 @@ async function entrar() {
 
 async function sair() {
   $('btn-sair').disabled = true;
-  try {
-    await supabase.auth.signOut();
-  } catch (e) {
-    mostrarErro(e);
-  }
+  try { await supabase.auth.signOut(); } catch (e) { mostrarErro(e); }
   limparMarcas();
   limparVerifiersAntigos();
   mostrarEntrada();
   diagnostico(null);
 }
 
-// ---------- Diagnóstico ----------
+// ---------- diagnóstico ----------
 function modoApresentacao() {
   if (window.navigator.standalone === true) return 'instalada (iOS)';
   if (window.matchMedia('(display-mode: standalone)').matches) return 'instalada';
   return 'browser';
 }
-
 function diagnostico(session) {
   const d = $('diag');
   if (!CONFIG.DEBUG) { d.classList.add('oculto'); return; }
   d.classList.remove('oculto');
+  const chave = (CONFIG.SUPABASE_PUBLISHABLE_KEY || '').trim();
   const inicio = Number(store.getItem(K_INICIO) || 0);
   const visto = Number(store.getItem(K_VISTO) || 0);
-  const chave = (CONFIG.SUPABASE_PUBLISHABLE_KEY || '').trim();
   d.innerHTML = [
     `<b>Modo:</b> ${modoApresentacao()}`,
     `<b>Fluxo:</b> ${CONFIG.FLOW_TYPE}`,
@@ -354,16 +235,12 @@ function diagnostico(session) {
   ].filter(Boolean).join('<br>');
 }
 
-// ---------- Carregamento da biblioteca ----------
-// Versão fixa primeiro (previsível), alternativas a seguir (resistente a falhas
-// de CDN). Importar assim, e não com import estático, permite dizer no ecrã
-// que foi o carregamento que falhou em vez de deixar a página em branco.
+// ---------- biblioteca ----------
 const FONTES = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/+esm',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
   'https://esm.sh/@supabase/supabase-js@2.112.4',
 ];
-
 async function carregarBiblioteca() {
   let ultimo = null;
   for (const url of FONTES) {
@@ -376,34 +253,54 @@ async function carregarBiblioteca() {
     + 'Verifica a ligação à internet. Último erro: ' + textoErro(ultimo));
 }
 
-// ---------- Arranque ----------
+async function lerPerfil() {
+  try {
+    const { data, error } = await supabase.from('profiles').select('nome, aprovado').maybeSingle();
+    if (error) return { lido: false, motivo: error.message };
+    if (!data) return { lido: false, motivo: 'sem linha em profiles' };
+    return { lido: true, aprovado: data.aprovado === true };
+  } catch (e) {
+    return { lido: false, motivo: (e && e.message) ? e.message : String(e) };
+  }
+}
+
+// O ecrã de espera é cortesia, não é segurança: quem manda é a RLS. Por isso,
+// se a leitura falhar, deixamos entrar e anotamos — trancar a porta por um
+// erro de configuração não protegia nada e bloqueava o próprio dono.
+async function encaminhar(session) {
+  estadoPerfil = await lerPerfil();
+  if (estadoPerfil.lido && !estadoPerfil.aprovado) {
+    mostrarEspera(session.user);
+    diagnostico(session);
+    return;
+  }
+  location.replace('hoje.html');
+}
+
+// ---------- arranque ----------
 async function principal() {
-  // 1. A chave tem de estar preenchida. Sem isto, tudo o resto falha de forma
-  //    confusa: o botão fica sem efeito e o erro que aparece não diz porquê.
   const chave = (CONFIG.SUPABASE_PUBLISHABLE_KEY || '').trim();
   const chaveOk = /^sb_publishable_[A-Za-z0-9_-]{10,}$/.test(chave)
                || /^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(chave);
   if (!chaveOk) {
     mostrarErro('Falta a chave publicável. Abre o config.js e substitui o valor de '
-      + 'SUPABASE_PUBLISHABLE_KEY pela chave do painel do Supabase '
-      + '(Settings → API Keys), que começa por sb_publishable_. '
-      + 'Valor atual: "' + (chave.slice(0, 20) || '(vazio)') + '…"');
+      + 'SUPABASE_PUBLISHABLE_KEY pela chave do painel do Supabase (Settings → API Keys), '
+      + 'que começa por sb_publishable_. Valor atual: "' + (chave.slice(0, 20) || '(vazio)') + '…"');
     mostrarEntrada('Configuração incompleta.', true);
     diagnostico(null);
     return;
   }
 
-  // 2. Biblioteca
   const createClient = await carregarBiblioteca();
 
-  // 3. O "code verifier" do PKCE é escrito antes de sair para o Google e lido no
-  //    regresso. Se a caixa "manter sessão" mudar nesse intervalo, o
-  //    armazenamento mudava e o verifier desaparecia. Por isso o verifier fica
-  //    sempre em localStorage; só a sessão respeita a escolha.
+  // O "code verifier" do PKCE é escrito antes de sair para o Google e lido no
+  // regresso. Se a caixa "manter sessão" mudar nesse intervalo, o
+  // armazenamento mudava e o verifier desaparecia — por isso fica sempre em
+  // localStorage; só a sessão respeita a escolha.
   const ehVerifier = (k) => String(k).includes('code-verifier');
   const armazenamento = {
-    getItem: (k) => (ehVerifier(k) ? localStorage : store).getItem(k),
-    setItem: (k, v) => (ehVerifier(k) ? localStorage : store).setItem(k, v),
+    getItem:    (k) => (ehVerifier(k) ? localStorage : store).getItem(k),
+    setItem:    (k, v) => (ehVerifier(k) ? localStorage : store).setItem(k, v),
     removeItem: (k) => (ehVerifier(k) ? localStorage : store).removeItem(k),
   };
 
@@ -422,36 +319,28 @@ async function principal() {
     if (evento === 'SIGNED_IN' && session) {
       limparVerifiersAntigos();
       marcarAbertura(!store.getItem(K_INICIO));
-      entrarNaApp(session.user, session).catch(mostrarErro);
+      encaminhar(session).catch(mostrarErro);
     }
-    if (evento === 'SIGNED_OUT') {
-      mostrarEntrada();
-      diagnostico(null);
-    }
+    if (evento === 'SIGNED_OUT') { mostrarEntrada(); diagnostico(null); }
   });
 
-  // 4. Erro devolvido pelo Google / Supabase no URL
   const params = new URLSearchParams(location.search || location.hash.replace('#', '?'));
   const erroUrl = params.get('error_description') || params.get('error');
   if (erroUrl) mostrarErro('Erro de autenticação: ' + erroUrl);
 
-  // Regresso do Google: conta como login novo e reinicia o limite de 60 dias.
   const veioDoLogin = /[?#].*(code=|access_token=)/.test(location.href);
 
   const { data, error } = await supabase.auth.getSession();
   if (error) mostrarErro(error);
   const session = data?.session || null;
 
-  // Limpa o URL depois do regresso do Google
-  if (location.search || location.hash) {
-    history.replaceState({}, '', location.pathname);
-  }
+  if (location.search || location.hash) history.replaceState({}, '', location.pathname);
 
   if (session) {
     if (veioDoLogin) {
       limparVerifiersAntigos();
       marcarAbertura(true);
-      await entrarNaApp(session.user, session);
+      await encaminhar(session);
       return;
     }
     const limite = limiteUltrapassado();
@@ -465,7 +354,7 @@ async function principal() {
       return;
     }
     marcarAbertura(false);
-    await entrarNaApp(session.user, session);
+    await encaminhar(session);
     return;
   }
   mostrarEntrada();

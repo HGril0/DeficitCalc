@@ -1,0 +1,314 @@
+/* DeficitCalc — vidro líquido.
+   Um sítio só para as cores e as formas. Se precisares de mudar o aspeto,
+   mexe aqui e muda em toda a app.
+
+   O acento NÃO é o mesmo nos dois modos: o tom que se lê bem sobre fundo
+   escuro desaparece sobre branco. São duas variáveis, de propósito. */
+
+/* ---------- modo claro (predefinição) ---------- */
+:root {
+  --fundo-base: #E6E8EB;
+  --fundo: radial-gradient(circle at 8% 6%,  rgba(140,168,196,0.85) 0, rgba(140,168,196,0) 46%),
+           radial-gradient(circle at 96% 36%, rgba(150,184,170,0.75) 0, rgba(150,184,170,0) 42%),
+           radial-gradient(circle at 12% 84%, rgba(168,160,196,0.60) 0, rgba(168,160,196,0) 46%),
+           radial-gradient(circle at 92% 96%, rgba(212,180,148,0.65) 0, rgba(212,180,148,0) 40%),
+           var(--fundo-base);
+
+  --texto: #121620;
+  --fraco: #47505E;
+
+  --vidro: rgba(255,255,255,0.50);
+  --vidro-leve: rgba(255,255,255,0.44);
+  --vidro-borda: rgba(255,255,255,0.75);
+  --vidro-borda-leve: rgba(255,255,255,0.70);
+  --realce: rgba(255,255,255,0.90);
+  --sombra: 0 12px 32px rgba(30,40,60,0.10);
+  --divisoria: rgba(18,22,32,0.08);
+  --tracejado: rgba(18,22,32,0.55);
+
+  --acento: #1D5C73;
+  --acento-texto: #1D5C73;
+  --acento-suave: rgba(29,92,115,0.12);
+
+  --barra: linear-gradient(180deg, #3A7C93, #1D5C73);
+  --barra-alta: linear-gradient(180deg, #C66A4E, #9C4128);
+  --barra-alta-texto: #9C4128;
+  --hoje-fundo: rgba(29,92,115,0.12);
+  --hoje-contorno: 1.5px dashed #1D5C73;
+
+  --veu: rgba(40,50,70,0.35);
+  --folha: rgba(255,255,255,0.82);
+  --campo: rgba(255,255,255,0.65);
+  --puxador: rgba(18,22,32,0.25);
+  --erro: #A33124;
+  --erro-fundo: rgba(163,49,36,0.10);
+}
+
+/* ---------- modo escuro ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --fundo-base: #04060A;
+    --fundo: radial-gradient(circle at 8% 6%,  rgba(46,96,150,0.30) 0, rgba(46,96,150,0) 44%),
+             radial-gradient(circle at 96% 36%, rgba(18,110,120,0.22) 0, rgba(18,110,120,0) 40%),
+             radial-gradient(circle at 12% 84%, rgba(72,60,135,0.24) 0, rgba(72,60,135,0) 44%),
+             radial-gradient(circle at 92% 96%, rgba(170,100,55,0.20) 0, rgba(170,100,55,0) 38%),
+             var(--fundo-base);
+
+    --texto: #F2F4F7;
+    --fraco: rgba(235,240,245,0.74);
+
+    --vidro: rgba(11,14,22,0.68);
+    --vidro-leve: rgba(11,14,22,0.58);
+    --vidro-borda: rgba(255,255,255,0.14);
+    --vidro-borda-leve: rgba(255,255,255,0.13);
+    --realce: rgba(255,255,255,0.18);
+    --sombra: 0 12px 32px rgba(0,0,0,0.35);
+    --divisoria: rgba(255,255,255,0.09);
+    --tracejado: rgba(242,244,247,0.50);
+
+    --acento: #8FD3D8;
+    --acento-texto: #BFE8EB;
+    --acento-suave: rgba(143,211,216,0.16);
+
+    --barra: linear-gradient(180deg, #D6EEF0, #8FD3D8);
+    --barra-alta: linear-gradient(180deg, #F3C4AE, #E08A6A);
+    --barra-alta-texto: #F0B49A;
+    --hoje-fundo: rgba(143,211,216,0.14);
+    --hoje-contorno: 1.5px dashed #8FD3D8;
+
+    --veu: rgba(2,3,7,0.62);
+    --folha: rgba(8,10,17,0.92);
+    --campo: rgba(255,255,255,0.06);
+    --puxador: rgba(255,255,255,0.30);
+    --erro: #F0A090;
+    --erro-fundo: rgba(240,160,144,0.12);
+  }
+}
+
+/* O mesmo escuro, mas escolhido à mão em vez de herdado do sistema. */
+:root[data-tema="escuro"] {
+  --fundo-base: #04060A;
+  --fundo: radial-gradient(circle at 8% 6%,  rgba(46,96,150,0.30) 0, rgba(46,96,150,0) 44%),
+           radial-gradient(circle at 96% 36%, rgba(18,110,120,0.22) 0, rgba(18,110,120,0) 40%),
+           radial-gradient(circle at 12% 84%, rgba(72,60,135,0.24) 0, rgba(72,60,135,0) 44%),
+           radial-gradient(circle at 92% 96%, rgba(170,100,55,0.20) 0, rgba(170,100,55,0) 38%),
+           var(--fundo-base);
+  --texto: #F2F4F7;
+  --fraco: rgba(235,240,245,0.74);
+  --vidro: rgba(11,14,22,0.68);
+  --vidro-leve: rgba(11,14,22,0.58);
+  --vidro-borda: rgba(255,255,255,0.14);
+  --vidro-borda-leve: rgba(255,255,255,0.13);
+  --realce: rgba(255,255,255,0.18);
+  --sombra: 0 12px 32px rgba(0,0,0,0.35);
+  --divisoria: rgba(255,255,255,0.09);
+  --tracejado: rgba(242,244,247,0.50);
+  --acento: #8FD3D8;
+  --acento-texto: #BFE8EB;
+  --acento-suave: rgba(143,211,216,0.16);
+  --barra: linear-gradient(180deg, #D6EEF0, #8FD3D8);
+  --barra-alta: linear-gradient(180deg, #F3C4AE, #E08A6A);
+  --barra-alta-texto: #F0B49A;
+  --hoje-fundo: rgba(143,211,216,0.14);
+  --hoje-contorno: 1.5px dashed #8FD3D8;
+  --veu: rgba(2,3,7,0.62);
+  --folha: rgba(8,10,17,0.92);
+  --campo: rgba(255,255,255,0.06);
+  --puxador: rgba(255,255,255,0.30);
+  --erro: #F0A090;
+  --erro-fundo: rgba(240,160,144,0.12);
+}
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html { background: var(--fundo-base); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--fundo);
+  background-attachment: fixed;
+  color: var(--texto);
+  font: 16px/1.5 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px);
+  max-width: 460px;
+  margin-inline: auto;
+  transition: background-color .35s ease, color .35s ease;
+}
+
+a { text-decoration: none; color: inherit; }
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Alvos de toque com pelo menos 44 px, como manda o iOS. */
+button, a.botao, .linha-toque { min-height: 44px; }
+
+.num { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; }
+.mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+.etiqueta {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--fraco);
+}
+
+/* ---------- vidro ---------- */
+.vidro, .vidro-leve {
+  border-radius: 24px;
+  border: 1px solid var(--vidro-borda);
+  -webkit-backdrop-filter: blur(26px) saturate(140%);
+  backdrop-filter: blur(26px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--realce), var(--sombra);
+  transition: background-color .35s ease, border-color .35s ease;
+}
+.vidro { background: var(--vidro); }
+.vidro-leve { background: var(--vidro-leve); border-color: var(--vidro-borda-leve); }
+
+.toque { transition: transform .13s ease, background-color .25s ease, border-color .25s ease; }
+.toque:active { transform: scale(0.975); }
+
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* ---------- cabeçalho ---------- */
+.topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 4px 14px;
+}
+.topo h1 { font-size: 19px; font-weight: 600; margin: 0; }
+.topo .data { font-size: 17px; font-weight: 600; }
+
+.redondo {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vidro);
+  border: 1px solid var(--vidro-borda);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* ---------- listas ---------- */
+.lista > * + * { border-top: 1px solid var(--divisoria); }
+.linha-toque {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  text-align: left;
+}
+
+/* ---------- navegação ---------- */
+.nav {
+  display: flex;
+  padding: 6px;
+  border-radius: 28px;
+  margin-top: 16px;
+}
+.nav a {
+  flex: 1;
+  text-align: center;
+  padding: 11px 0;
+  border-radius: 22px;
+  font-size: 13px;
+  color: var(--fraco);
+  display: flex; align-items: center; justify-content: center;
+}
+.nav a[aria-current="page"] {
+  background: var(--acento-suave);
+  color: var(--acento-texto);
+  font-weight: 600;
+}
+
+/* ---------- formulário ---------- */
+label { display: block; font-size: 13px; color: var(--fraco); margin: 14px 0 6px; }
+label:first-child { margin-top: 0; }
+
+input, select {
+  width: 100%;
+  font: inherit;
+  color: var(--texto);
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--vidro-borda-leve);
+  background: var(--campo);
+}
+input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+
+.principal {
+  width: 100%;
+  font-weight: 600;
+  padding: 15px;
+  border-radius: 16px;
+  background: var(--acento-suave);
+  border: 1px solid var(--acento);
+  color: var(--acento-texto);
+  margin-top: 18px;
+}
+.principal[disabled] { opacity: .45; }
+
+/* ---------- folha ---------- */
+.veu {
+  position: fixed; inset: 0;
+  width: 100%;
+  background: var(--veu);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: aparecer .22s ease;
+  z-index: 10;
+}
+.folha {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 11;
+  max-width: 460px;
+  margin-inline: auto;
+  padding: 18px 18px calc(env(safe-area-inset-bottom) + 24px);
+  border-radius: 28px 28px 0 0;
+  background: var(--folha);
+  border-top: 1px solid var(--vidro-borda);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  backdrop-filter: blur(30px) saturate(160%);
+  box-shadow: inset 0 1px 0 var(--realce), 0 -14px 40px rgba(0,0,0,0.22);
+  animation: subir .28s cubic-bezier(.2,.9,.25,1);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.puxador {
+  width: 38px; height: 4px;
+  border-radius: 2px;
+  background: var(--puxador);
+  margin: 0 auto 14px;
+}
+
+@keyframes subir { from { transform: translateY(102%); } to { transform: translateY(0); } }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .folha, .veu { animation: none; }
+  .toque:active { transform: none; }
+  * { transition-duration: .01ms !important; }
+}
+
+/* ---------- avisos ---------- */
+.aviso {
+  border-radius: 14px;
+  padding: 11px 14px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.aviso.erro { border: 1px solid var(--erro); background: var(--erro-fundo); color: var(--erro); }
+.aviso.bom  { border: 1px solid var(--acento); background: var(--acento-suave); color: var(--acento-texto); }
+
+.oculto { display: none !important; }
