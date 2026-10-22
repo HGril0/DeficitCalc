@@ -1,5 +1,6 @@
 import { exigirSessao, textoErro } from './sessao.js';
 import { alternarTema, desenharIconeTema, aplicarTema } from './tema.js';
+import { montarPesquisa } from './pesquisa.js';
 
 const $ = (id) => document.getElementById(id);
 const PRINCIPAIS = ['pequeno_almoco', 'almoco', 'jantar'];
@@ -16,6 +17,7 @@ let registos = [];           // registos de hoje
 let semana = [];             // [{data, kcal, completo}]
 let diaSelecionado = null;
 let refeicaoAberta = null;
+let pesquisa = null;         // montada em principal()
 
 const hojeISO = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
 
@@ -234,7 +236,8 @@ function abrirFolha(ref) {
   $('folha').classList.remove('oculto');
   $('descricao').value = '';
   $('kcal').value = '';
-  setTimeout(() => $('descricao').focus(), 120);
+  pesquisa.limpar();
+  setTimeout(() => $('procura').focus(), 120);
 }
 
 function fecharFolha() {
@@ -374,6 +377,29 @@ async function principal() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     aplicarTema();
     desenharIconeTema($('btn-tema'));
+  });
+
+  pesquisa = montarPesquisa({
+    supabase,
+    aviso,
+    // Chamado quando a pessoa escolhe um alimento e a quantidade.
+    async registar(d) {
+      if (!refeicaoAberta) throw new Error('Abre uma refeição primeiro.');
+      if (saltada(refeicaoAberta)) throw new Error('Esta refeição está marcada como não comida. Anula isso primeiro.');
+      const { error } = await supabase.from('registos').insert({
+        data: hojeISO(),
+        refeicao: refeicaoAberta,
+        descricao: d.descricao,
+        kcal: d.kcal,
+        gramas: d.gramas,
+        alimento_id: d.alimento_id,
+        fonte: d.fonte,
+        estimativa: d.estimativa,
+      });
+      if (error) throw new Error(textoErro(error));
+      await carregar();
+      desenharItens();
+    },
   });
 
   $('veu').addEventListener('click', fecharFolha);

@@ -125,6 +125,100 @@ async function limpo(nome, a) {
   T('E9 X-Frame-Options DENY', h['x-frame-options'] === 'DENY');
   await ctx.close(); }
 
+// ---------------------------------------------------------------- pesquisa
+const CAT = [
+  { id: 'cat-insa-arroz', nome: 'Arroz cozido', marca: null, kcal_100: 130, fonte: 'insa', gramas_unidade: null, nome_unidade: null, codigo_barras: null },
+  { id: 'cat-cb-arroz', nome: 'Arroz cozido', marca: 'Marca X', kcal_100: 160, fonte: 'codigo_barras', gramas_unidade: null, nome_unidade: null, codigo_barras: '5601234567892' },
+  { id: 'cat-ovo', nome: 'Ovo cozido', marca: null, kcal_100: 155, fonte: 'insa', gramas_unidade: 55, nome_unidade: 'ovo', codigo_barras: null },
+];
+async function abrirAlmoco(a) {
+  await a.page.locator('#refeicoes button').filter({ hasText: /^Almoço/ }).click();
+  await a.page.waitForTimeout(250);
+}
+
+// E10/E11 pesquisa no catálogo, conflito entre fontes, registo por gramas
+{ const a = await abrir('hoje.html', { alimentos: CAT });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'arroz'); await a.page.waitForTimeout(600);
+  const linhas = await a.page.locator('#resultados li').allTextContents();
+  T('E10 a pesquisa mostra os dois arrozes com a fonte de cada', linhas.length === 2 && linhas.some(t => t.includes('INSA')) && linhas.some(t => t.includes('código de barras')), linhas.join(' | '));
+  const nota = await a.page.locator('#nota-conflito').textContent();
+  T('E10 avisa que as fontes não concordam (130 vs 160)', await a.page.locator('#nota-conflito').isVisible() && nota.includes('130') && nota.includes('160'), nota);
+  await a.page.locator('#resultados button').filter({ hasText: 'INSA' }).click();
+  await a.page.fill('#quantidade', '200'); await a.page.waitForTimeout(100);
+  T('E11 200 g de arroz a 130 kcal dá 260', (await a.page.textContent('#esc-kcal')) === '260', await a.page.textContent('#esc-kcal'));
+  await a.page.click('#registar-escolhido'); await a.page.waitForTimeout(500);
+  const itens = await a.page.locator('#itens').textContent();
+  T('E11 fica registado com nome e quantidade', itens.includes('Arroz cozido · 200 g') && itens.includes('260'), itens);
+  const ins = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'registos' && p.modo === 'insert').pop().corpo);
+  T('E11 guarda gramas, fonte INSA e a ligação ao catálogo, sem dono no pedido', ins.gramas === 200 && ins.fonte === 'insa' && ins.alimento_id === 'cat-insa-arroz' && !('utilizador_id' in ins), JSON.stringify(ins));
+  T('E11 a pesquisa volta ao início depois de registar', await a.page.locator('#bloco-pesquisa').isVisible() && (await a.page.inputValue('#procura')) === '');
+  await limpo('E10/E11', a); await a.ctx.close(); }
+
+// E12 unidades: 2 ovos
+{ const a = await abrir('hoje.html', { alimentos: CAT });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'ovo'); await a.page.waitForTimeout(600);
+  await a.page.locator('#resultados button').first().click();
+  T('E12 com unidade, começa em 1 ovo', (await a.page.inputValue('#quantidade')) === '1' && (await a.page.textContent('#rot-quantidade')) === 'Ovos', await a.page.textContent('#rot-quantidade'));
+  await a.page.fill('#quantidade', '2'); await a.page.waitForTimeout(100);
+  T('E12 2 ovos de 55 g a 155 kcal dá 171', (await a.page.textContent('#esc-kcal')) === '171', await a.page.textContent('#esc-kcal'));
+  await a.page.click('#registar-escolhido'); await a.page.waitForTimeout(500);
+  T('E12 descrição diz "2 ovos (110 g)"', (await a.page.locator('#itens').textContent()).includes('2 ovos (110 g)'));
+  await limpo('E12', a); await a.ctx.close(); }
+
+// E13 Open Food Facts com um nome de produto malicioso
+{ const MAU = '<img src=x onerror="window.__XSS__=1">Iogurte';
+  const cand = { codigo: '5601312512059', nome: MAU, marca: 'Continente', kcal_100: 69, gramas_unidade: 125, nome_unidade: 'porção' };
+  const a = await abrir('hoje.html', { off: { candidatos: [cand], codigos: { '5601312512059': { nome: MAU, marca: 'Continente', kcal_100: 69, gramas_unidade: 125, nome_unidade: 'porção' } } } });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'iogurte'); await a.page.waitForTimeout(500);
+  await a.page.click('#btn-off'); await a.page.waitForTimeout(500);
+  T('E13 o nome aparece como texto, não como HTML', (await a.page.locator('#resultados').textContent()).includes('<img src=x') && (await a.page.locator('#resultados img').count()) === 0);
+  T('E13 e o código do atacante não correu', await a.page.evaluate(() => window.__XSS__ === undefined));
+  await a.page.locator('#resultados button').first().click();
+  T('E13 porção de 125 g a 69 kcal dá 86', (await a.page.textContent('#esc-kcal')) === '86', await a.page.textContent('#esc-kcal'));
+  await a.page.click('#registar-escolhido'); await a.page.waitForTimeout(500);
+  const ped = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.funcao).map(p => p.corpo.acao));
+  T('E13 antes de registar, guarda o produto pelo servidor (pesquisa → código)', JSON.stringify(ped) === '["procurar","codigo"]', JSON.stringify(ped));
+  const ins = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'registos' && p.modo === 'insert').pop().corpo);
+  T('E13 o registo fica ligado ao produto guardado', ins.alimento_id === 'cat-5601312512059' && ins.fonte === 'codigo_barras', JSON.stringify(ins));
+  T('E13 nenhuma imagem injetada na lista de itens', (await a.page.locator('#itens img').count()) === 0);
+  await limpo('E13', a); await a.ctx.close(); }
+
+// E14 código de barras: encontrado, inexistente, limite
+{ const a = await abrir('hoje.html', { off: { codigos: { '3017620422003': { nome: 'Nutella', marca: 'Ferrero', kcal_100: 539, gramas_unidade: 15, nome_unidade: 'porção' } } } });
+  await abrirAlmoco(a);
+  await a.page.fill('#codigo', '3017620422003'); await a.page.click('#btn-codigo'); await a.page.waitForTimeout(500);
+  T('E14 código conhecido abre a quantidade', await a.page.locator('#escolhido').isVisible() && (await a.page.textContent('#esc-nome')).includes('Nutella'));
+  await a.page.click('#cancelar-escolhido');
+  await a.page.fill('#codigo', '4006381333931'); await a.page.click('#btn-codigo'); await a.page.waitForTimeout(500);
+  T('E14 código desconhecido explica que não encontrou', (await a.page.textContent('#msg')).includes('Não encontrei'), await a.page.textContent('#msg'));
+  await a.page.fill('#codigo', '12ab'); await a.page.click('#btn-codigo'); await a.page.waitForTimeout(200);
+  T('E14 código curto é recusado antes de ir ao servidor', (await a.page.textContent('#msg')).includes('8 e 14'));
+  await limpo('E14', a); await a.ctx.close(); }
+{ const a = await abrir('hoje.html', { off: { estado: 429, erro: 'Muitos pedidos seguidos. Espera um minuto.' } });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'arroz'); await a.page.click('#btn-off'); await a.page.waitForTimeout(500);
+  T('E15 limite do servidor aparece com a mensagem dele', (await a.page.textContent('#msg')).includes('Espera um minuto'), await a.page.textContent('#msg'));
+  T('E15 o botão volta a ficar disponível', await a.page.locator('#btn-off').isEnabled() && (await a.page.textContent('#btn-off')).includes('Open Food Facts'));
+  await limpo('E15', a); await a.ctx.close(); }
+
+// E16 produto que já está no catálogo e volta a aparecer no Open Food Facts
+{ const a = await abrir('hoje.html', { alimentos: CAT, off: { candidatos: [
+      { codigo: '5601234567892', nome: 'Arroz cozido', marca: 'Marca X', kcal_100: 160, gramas_unidade: null, nome_unidade: null },
+      { codigo: '5600000000007', nome: 'Arroz basmati', marca: 'Outra', kcal_100: 350, gramas_unidade: null, nome_unidade: null } ] } });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'arroz'); await a.page.waitForTimeout(600);
+  await a.page.click('#btn-off'); await a.page.waitForTimeout(500);
+  const linhas = await a.page.locator('#resultados li').allTextContents();
+  T('E16 o produto já no catálogo não aparece duas vezes', linhas.length === 3 && linhas.filter(t => t.includes('Marca X')).length === 1, linhas.join(' | '));
+  await a.page.locator('#resultados button').filter({ hasText: 'basmati' }).click();
+  await a.page.fill('#quantidade', '80'); await a.page.click('#registar-escolhido'); await a.page.waitForTimeout(400);
+  const ped = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.funcao).map(p => p.corpo.acao));
+  T('E16 produto novo do OFF é guardado pelo servidor antes de registar', JSON.stringify(ped) === '["procurar","codigo"]', JSON.stringify(ped));
+  await limpo('E16', a); await a.ctx.close(); }
+
 await browser.close(); srv.kill();
 let falhas = 0;
 for (const r of resultados) { if (!r.ok) falhas++; console.log((r.ok ? 'PASSA' : '>>> FALHA') + ' | ' + r.nome + (r.ok || !r.obs ? '' : ' | ' + r.obs)); }

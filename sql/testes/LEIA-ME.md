@@ -6,27 +6,26 @@ que as políticas fazem o que dizem **antes** de mexer na base de dados a sério
 ## Correr
 
 ```bash
-export PGDATA=/var/lib/postgresql/testdc
-su postgres -c "/usr/lib/postgresql/16/bin/initdb -D $PGDATA -A trust -U postgres"
-su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D $PGDATA -o '-k /tmp -p 5433' start"
-
-psql -h /tmp -p 5433 -U postgres -f sql/testes/00-ambiente.sql   # imita o Supabase
-psql -h /tmp -p 5433 -U postgres -f sql/01-profiles.sql
-psql -h /tmp -p 5433 -U postgres -f sql/02-porteiro.sql
-psql -h /tmp -p 5433 -U postgres -f sql/03-perfil-objetivo.sql
-psql -h /tmp -p 5433 -U postgres -f sql/testes/01-bateria.sql        # perfis e porteiro
-psql -h /tmp -p 5433 -U postgres -f sql/04-registos.sql
-psql -h /tmp -p 5433 -U postgres -f sql/testes/02-bateria-pesos.sql    # pesos e gasto estimado
-psql -h /tmp -p 5433 -U postgres -f sql/testes/03-bateria-registos.sql # registo diário
-psql -h /tmp -p 5433 -U postgres -f sql/05-alimentos.sql
-psql -h /tmp -p 5433 -U postgres -f sql/testes/04-bateria-alimentos.sql  # base de alimentos
+bash sql/testes/correr-tudo.sh            # instalação nova (todos menos os de correção)
+bash sql/testes/correr-tudo.sh producao   # a história real do Supabase: 01-04 antigos + correções
 ```
 
-No fim devem passar 93 verificações sem falhas: 16 + 16 + 28 + 33.
+O script reconstrói do zero um PostgreSQL que imita o Supabase e corre todas
+as baterias. Os dois modos têm de dar o mesmo total (125 a 23/10/2026).
 
-O `sql/06-correcao-permissoes.sql` não entra aqui: corrige uma base de dados
-que já foi criada com a versão antiga dos ficheiros. Numa instalação do zero,
-os ficheiros 01 a 05 já estão corrigidos.
+Os ficheiros com `correcao` no nome só servem para atualizar uma base de
+dados criada com versões antigas — numa instalação nova não se correm,
+porque os ficheiros 01 a 05 já vêm corrigidos (o 06, por exemplo, recria o
+`estimar_gasto` como `security definer`, o que desfaria o 09).
+
+Outros testes do projeto:
+
+```bash
+node --experimental-strip-types supabase/functions/alimentos/teste.mjs   # função do servidor
+node testes-ecra/correr.mjs                                              # ecrã, num Chromium com a CSP real
+```
+
+E contra produção, com sessão verdadeira: ver `testes-producao/LEIA-ME.md`.
 
 ## O ambiente tem de ser tão permissivo como o Supabase
 

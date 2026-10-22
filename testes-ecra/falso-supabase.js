@@ -30,6 +30,7 @@
       upsert(c, o) { q.modo = 'upsert'; q.corpo = c; q.opcoes = o || {}; return api; },
       delete() { q.modo = 'delete'; return api; },
       eq(k, v) { q.filtros.push([k, v]); return api; },
+      in(k, lista) { q.filtrosIn = [...(q.filtrosIn || []), [k, lista.map(String)]]; return api; },
       order(k, o) { q.ordem = [k, (o && o.ascending === false) ? -1 : 1]; return api; },
       limit(x) { q.limite = x; return api; },
       maybeSingle() { q.um = true; return api; },
@@ -48,7 +49,8 @@
     window.__PEDIDOS__.push({ tabela: q.tabela, modo: q.modo, corpo: q.corpo });
     const t = q.tabela;
     if (!(t in bd)) return erro('42P01', 'tabela desconhecida ' + t);
-    const filtra = (r) => q.filtros.every(([k, v]) => String(r[k]) === String(v));
+    const filtra = (r) => q.filtros.every(([k, v]) => String(r[k]) === String(v))
+      && (q.filtrosIn || []).every(([k, l]) => l.includes(String(r[k])));
     if (q.modo === 'select') {
       let r = meus(t).filter(filtra);
       if (q.ordem) r = [...r].sort((a, b) => (a[q.ordem[0]] > b[q.ordem[0]] ? 1 : -1) * q.ordem[1]);
@@ -104,7 +106,7 @@
       const t = String(args?.p_texto || '').toLowerCase();
       if (t.length < 2) return { data: [], error: null };
       const meus_ = bd.alimentos_meus.map(a => ({ ...a, fonte: 'meu', meu: true }));
-      const cat = bd.alimentos.map(a => ({ ...a, meu: false }));
+      const cat = bd.alimentos.map(({ codigo_barras, ...a }) => ({ ...a, meu: false }));  // como o rpc real
       return { data: [...meus_, ...cat].filter(a => a.nome.toLowerCase().includes(t)), error: null };
     }
     return erro('PGRST202', 'função desconhecida ' + nome);
@@ -124,7 +126,27 @@
         },
         from: construtor,
         rpc: async (n, a) => rpc(n, a),
-        functions: { async invoke(nome, o) { return window.__FUNCOES__?.[nome]?.(o) ?? { data: null, error: { message: 'sem função ' + nome } }; } },
+        // Imita a função "alimentos" do servidor, incluindo os erros (o
+        // supabase-js devolve-os com a resposta em error.context).
+        functions: {
+          async invoke(nome, o) {
+            const corpo = o && o.body;
+            window.__PEDIDOS__.push({ funcao: nome, corpo });
+            const off = cenario.off || {};
+            const falha = (status, obj) => ({ data: null, error: { name: 'FunctionsHttpError', context: new Response(JSON.stringify(obj), { status }) } });
+            if (nome !== 'alimentos') return falha(404, { erro: 'sem função' });
+            if (off.estado) return falha(off.estado, { erro: off.erro || 'erro' });
+            if (corpo.acao === 'procurar') return { data: { candidatos: off.candidatos || [] }, error: null };
+            if (corpo.acao === 'codigo') {
+              const a = (off.codigos || {})[corpo.codigo];
+              if (!a) return falha(404, { encontrado: false });
+              const linha = { id: 'cat-' + corpo.codigo, fonte: 'codigo_barras', codigo_barras: corpo.codigo, ...a };
+              if (!bd.alimentos.some(x => x.codigo_barras === corpo.codigo)) bd.alimentos.push(linha);
+              return { data: { alimento: linha, origem: 'open_food_facts' }, error: null };
+            }
+            return falha(400, { erro: 'Ação desconhecida.' });
+          },
+        },
       };
     },
   };

@@ -52,6 +52,34 @@
   .dupla > div { flex: 1; }
   .dupla > div:last-child { flex: 0 0 110px; }
   .carregar { text-align: center; color: var(--fraco); padding: 40px 0; font-size: 14px; }
+  .resultados { list-style: none; margin: 8px 0 0; padding: 0; max-height: 42vh; overflow-y: auto; }
+  .resultados li + li { border-top: 1px solid var(--divisoria); }
+  .resultado { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+               padding: 11px 2px; background: none; border: 0; text-align: left; color: var(--texto); }
+  .res-esq { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .res-nome { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+  .res-meta { font-size: 12px; color: var(--fraco); }
+  .selo-fonte { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--acento-texto); }
+  .res-kcal { white-space: nowrap; font-size: 18px; }
+  .res-kcal small { font-size: 11px; color: var(--fraco); font-family: 'IBM Plex Sans', sans-serif; }
+  .nota-fonte { font-size: 12.5px; line-height: 1.45; color: var(--fraco); margin: 8px 0 0;
+                border-left: 3px solid var(--acento); padding-left: 10px; }
+  .secundario { width: 100%; margin-top: 10px; padding: 12px; border-radius: 14px; font-size: 14px; font-weight: 500;
+                border: 1px solid var(--vidro-borda-leve); background: var(--campo); color: var(--acento-texto); }
+  .linha-codigo { align-items: flex-end; margin-top: 4px; }
+  .linha-codigo .secundario { width: auto; flex: 0 0 auto; padding: 12px 18px; margin: 0 0 2px; }
+  .separador { text-align: center; font-size: 12px; color: var(--fraco); margin: 16px 0 2px; }
+  .escolhido { margin-top: 6px; }
+  .esc-nome { font-size: 17px; font-weight: 600; }
+  .esc-fonte { font-size: 12.5px; color: var(--fraco); margin: 3px 0 10px; }
+  .esc-gramas { font-size: 12px; color: var(--fraco); margin-top: 4px; min-height: 15px; }
+  .esc-total { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; font-size: 38px; flex: 0 0 auto; }
+  .esc-total small { font-size: 13px; color: var(--fraco); font-family: 'IBM Plex Sans', sans-serif; }
+  .unidades { display: flex; gap: 8px; margin-bottom: 4px; }
+  .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--vidro-borda-leve); background: var(--campo);
+          color: var(--fraco); font-size: 13px; }
+  .chip[aria-pressed="true"] { background: var(--acento-suave); color: var(--acento-texto); border-color: var(--acento); }
+  .ligacao { width: 100%; margin-top: 8px; padding: 10px; font-size: 14px; color: var(--fraco); background: none; border: 0; }
 </style>
 </head>
 <body>
@@ -113,6 +141,43 @@
   <p id="folha-sub" style="font-size:12px;color:var(--fraco);margin:3px 0 14px"></p>
 
   <ul class="itens" id="itens"></ul>
+
+  <div id="bloco-pesquisa">
+    <label for="procura">Procurar alimento</label>
+    <input type="search" id="procura" maxlength="60" autocomplete="off" enterkeyhint="search"
+           placeholder="iogurte natural, arroz, pão…">
+    <ul class="resultados" id="resultados"></ul>
+    <p class="nota-fonte oculto" id="nota-conflito"></p>
+    <p class="nota-fonte oculto" id="sem-resultados">Nada no catálogo com esse nome. Experimenta o Open Food Facts.</p>
+    <button type="button" class="secundario toque" id="btn-off">Procurar no Open Food Facts</button>
+    <div class="dupla linha-codigo">
+      <div>
+        <label for="codigo">Código de barras</label>
+        <input type="text" id="codigo" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="5601234567892">
+      </div>
+      <button type="button" class="secundario toque" id="btn-codigo">Ler</button>
+    </div>
+    <p class="separador">ou escreve à mão</p>
+  </div>
+
+  <div id="escolhido" class="escolhido oculto">
+    <div class="esc-nome" id="esc-nome"></div>
+    <div class="esc-fonte" id="esc-fonte"></div>
+    <div class="unidades oculto" id="unidades" role="group" aria-label="Medir em">
+      <button type="button" class="chip toque" id="modo-gramas" aria-pressed="true">gramas</button>
+      <button type="button" class="chip toque" id="modo-unidade" aria-pressed="false"></button>
+    </div>
+    <div class="dupla">
+      <div>
+        <label for="quantidade" id="rot-quantidade">Gramas</label>
+        <input type="number" id="quantidade" min="0.5" max="5000" step="1" inputmode="decimal">
+        <div class="esc-gramas" id="esc-gramas"></div>
+      </div>
+      <div class="esc-total"><span class="num" id="esc-kcal">0</span><small> kcal</small></div>
+    </div>
+    <button type="button" class="principal toque" id="registar-escolhido">Registar</button>
+    <button type="button" class="toque ligacao" id="cancelar-escolhido">Escolher outro</button>
+  </div>
 
   <form id="form-item" autocomplete="off">
     <div class="dupla">
