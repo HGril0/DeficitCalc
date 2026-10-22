@@ -1,4 +1,4 @@
-// config.js — definições públicas do DeficitCalc.
+// config.js — definições públicas da Restam.
 // Só entram aqui valores que podem ser públicos num repositório público
 
 export const CONFIG = {
@@ -7,8 +7,18 @@ export const CONFIG = {
 
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_k8f6LgMyxqkdQ41BbZoqdw_7tTQkkO9',
 
-  // Supabase → Authentication → URL Configuration → Redirect URLs
-  REDIRECT_TO: 'https://hgril0.github.io/DeficitCalc/',
+  // Para onde o Google devolve o utilizador depois do login.
+  //
+  // IMPORTANTE: este valor tem de estar, LETRA POR LETRA, na lista
+  // Supabase → Authentication → URL Configuration → Redirect URLs.
+  // Nunca uses wildcards (https://*.pages.dev/**) nessa lista: qualquer
+  // pessoa pode criar um projeto .pages.dev e passaria a receber tokens
+  // de login dos teus utilizadores. Só URLs exactos.
+  //
+  // Durante a mudança de alojamento, mantém os dois URLs na lista do
+  // Supabase e muda só esta linha para testar cada um.
+  // Antigo (GitHub Pages, a desligar): 'https://hgril0.github.io/DeficitCalc/'
+  REDIRECT_TO: 'https://restam.pages.dev/',
 
   // muda para 'implicit' e volta a testar.
   FLOW_TYPE: 'pkce',
