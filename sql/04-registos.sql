@@ -173,7 +173,7 @@ as $$
    order by d.data;
 $$;
 
-revoke all on function public.dia(date) from anon, authenticated;
-revoke all on function public.ultimos_dias(int) from anon, authenticated;
+revoke all on function public.dia(date) from public, anon, authenticated;
+revoke all on function public.ultimos_dias(int) from public, anon, authenticated;
 grant execute on function public.dia(date) to authenticated;
 grant execute on function public.ultimos_dias(int) to authenticated;

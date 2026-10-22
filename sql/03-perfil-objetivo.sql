@@ -133,7 +133,13 @@ declare
 begin
   -- Só o próprio. Sem isto, a função com security definer seria uma porta
   -- lateral para ler o peso dos outros.
-  if v_id is null or v_id <> (select auth.uid()) then
+  -- "is distinct from" em vez de "<>": com <> , quando auth.uid() é NULL
+  -- (visitante sem sessão) a comparação dá NULL, o IF não dispara e a guarda
+  -- não guarda nada. Testado: um anónimo conseguia o gasto de outra pessoa
+  -- só por passar o id dela.
+  if v_id is null
+     or (select auth.uid()) is null
+     or v_id is distinct from (select auth.uid()) then
     return;
   end if;
 
@@ -195,5 +201,5 @@ begin
 end;
 $$;
 
-revoke all on function public.estimar_gasto(uuid) from anon, authenticated;
+revoke all on function public.estimar_gasto(uuid) from public, anon, authenticated;
 grant execute on function public.estimar_gasto(uuid) to authenticated;

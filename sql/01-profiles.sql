@@ -137,3 +137,8 @@ select u.id,
        coalesce(u.raw_user_meta_data ->> 'avatar_url', u.raw_user_meta_data ->> 'picture')
 from auth.users u
 on conflict (id) do nothing;
+
+-- As funções de trigger correm dentro do trigger. Ninguém as chama de fora,
+-- por isso ninguém precisa de permissão para as executar.
+revoke all on function public.criar_perfil_novo_utilizador() from public, anon, authenticated;
+revoke all on function public.marcar_atualizacao() from public, anon, authenticated;

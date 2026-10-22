@@ -111,4 +111,5 @@ as $$
   );
 $$;
 
+revoke all on function public.esta_aprovado() from public, anon, authenticated;
 grant execute on function public.esta_aprovado() to authenticated;

@@ -13,6 +13,26 @@ end $$;
 grant usage on schema public to anon, authenticated, service_role;
 grant usage on schema auth  to anon, authenticated, service_role;
 
+-- ---------------------------------------------------------------------------
+-- O Supabase a sério concede TUDO a anon, authenticated e service_role em
+-- cada tabela e função nova do schema public. Sem isto aqui, os testes de
+-- "o anónimo não lê" passavam porque a permissão nunca tinha sido dada no
+-- ambiente de teste — e não porque o revoke do ficheiro SQL a tirou.
+-- Era um teste a mentir: no Supabase real a permissão existe de origem e só
+-- desaparece se o revoke estiver escrito. Com estas linhas, o ambiente passa
+-- a ser tão permissivo como o verdadeiro e os testes têm de provar o revoke.
+-- ---------------------------------------------------------------------------
+alter default privileges in schema public
+  grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on functions to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all routines in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+
 create table auth.users (
   id                 uuid primary key default gen_random_uuid(),
   email              text unique,
