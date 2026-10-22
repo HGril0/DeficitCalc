@@ -1,0 +1,18 @@
+/* Fontes servidas pela própria app, em vez de virem do Google.
+   Duas razões: o Google deixa de ver o IP de quem abre a app, e a política
+   de conteúdo (CSP) pode fechar as fontes à própria origem.
+   Subconjunto Latin1 da IBM: cobre o português e ainda — … › € −.
+   Licenças em fontes/LICENCA-*.txt (SIL Open Font License 1.1). */
+
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('fontes/IBMPlexSans-Regular-Latin1.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('fontes/IBMPlexSans-Medium-Latin1.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('fontes/IBMPlexSans-SemiBold-Latin1.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('fontes/IBMPlexMono-Regular-Latin1.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('fontes/IBMPlexMono-Medium-Latin1.woff2') format('woff2'); }
+@font-face { font-family: 'Instrument Serif'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('fontes/InstrumentSerif-Regular.woff2') format('woff2'); }

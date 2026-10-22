@@ -64,6 +64,13 @@ create table if not exists public.pesos (
 create index if not exists pesos_por_pessoa_e_data
   on public.pesos (utilizador_id, medido_em desc);
 
+-- O dono da linha vem do servidor, não do cliente. Assim o ecrã não precisa
+-- de enviar utilizador_id, e o "upsert" (criar ou atualizar) não pede
+-- permissão para mudar essa coluna — permissão que não existe de propósito,
+-- para ninguém passar dados seus para a conta de outra pessoa. Sem isto,
+-- gravar o peso falhava sempre (encontrado em produção a 22/10/2026).
+alter table public.pesos alter column utilizador_id set default auth.uid();
+
 alter table public.pesos enable row level security;
 -- Sem force, pelo mesmo motivo do profiles (ver 01-profiles.sql).
 alter table public.pesos no force row level security;
@@ -102,6 +109,10 @@ grant update (kg, medido_em) on public.pesos to authenticated;
 --    desvio de cerca de 10% entre pessoas, e esconder isso dá uma falsa
 --    precisão que depois estraga a validação semanal.
 -- ---------------------------------------------------------------------------
+-- security invoker: corre com os poderes de quem chama, por isso o RLS da
+-- tabela aplica-se por baixo. A segurança não depende só das condições
+-- escritas aqui dentro (foi uma delas, a do NULL no estimar_gasto, que falhou
+-- a 22/10/2026). Só o esta_aprovado() precisa de security definer.
 create or replace function public.estimar_gasto(p_id uuid default null)
 returns table (
   gasto_estimado   int,
@@ -114,7 +125,7 @@ returns table (
 )
 language plpgsql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
 declare

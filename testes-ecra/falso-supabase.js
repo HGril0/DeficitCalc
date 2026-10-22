@@ -1,0 +1,131 @@
+// Substituto da biblioteca do Supabase, só para os testes do ecrã.
+// Guarda tudo em memória e imita as regras da base de dados que já nos
+// apanharam: um upsert/update que toque numa coluna sem permissão falha com
+// 42501, como no PostgreSQL. Foi assim que o ecrã de perfil falhou em produção.
+(function () {
+  const EU = 'aaaaaaaa-0000-0000-0000-000000000001';
+  const PODE_ALTERAR = {
+    profiles: ['nome', 'avatar_url', 'fuso', 'sexo', 'data_nascimento', 'altura_cm', 'nivel_atividade', 'objetivo_kg_semana'],
+    pesos: ['kg', 'medido_em'],
+    registos: ['data', 'refeicao', 'descricao', 'kcal', 'nao_comi', 'fonte', 'estimativa', 'gramas', 'alimento_id'],
+    alimentos_meus: ['nome', 'kcal_100', 'gramas_unidade', 'nome_unidade'],
+  };
+  const cenario = window.__CENARIO__ || {};
+  const bd = {
+    profiles: [{ id: EU, email: 'ana@exemplo.com', nome: 'Ana', aprovado: cenario.aprovado !== false, admin: false,
+                 sexo: null, data_nascimento: null, altura_cm: null, nivel_atividade: null, objetivo_kg_semana: null }],
+    pesos: [], registos: [], alimentos: cenario.alimentos || [], alimentos_meus: [],
+  };
+  window.__BD__ = bd;
+  window.__PEDIDOS__ = [];
+  let n = 0; const id = () => 'id-' + (++n);
+  const erro = (code, message) => ({ data: null, error: { code, message } });
+
+  function construtor(tabela) {
+    const q = { tabela, modo: 'select', filtros: [], ordem: null, limite: null, um: false, corpo: null, opcoes: {} };
+    const api = {
+      select() { if (q.modo === 'select') q.modo = 'select'; return api; },
+      insert(c) { q.modo = 'insert'; q.corpo = c; return api; },
+      update(c) { q.modo = 'update'; q.corpo = c; return api; },
+      upsert(c, o) { q.modo = 'upsert'; q.corpo = c; q.opcoes = o || {}; return api; },
+      delete() { q.modo = 'delete'; return api; },
+      eq(k, v) { q.filtros.push([k, v]); return api; },
+      order(k, o) { q.ordem = [k, (o && o.ascending === false) ? -1 : 1]; return api; },
+      limit(x) { q.limite = x; return api; },
+      maybeSingle() { q.um = true; return api; },
+      single() { q.um = true; return api; },
+      then(ok, ko) { return Promise.resolve(executar(q)).then(ok, ko); },
+    };
+    return api;
+  }
+  function meus(t) {
+    const linhas = bd[t] || [];
+    if (t === 'profiles') return linhas.filter(r => r.id === EU);
+    if (t === 'alimentos') return linhas;
+    return linhas.filter(r => r.utilizador_id === EU);
+  }
+  function executar(q) {
+    window.__PEDIDOS__.push({ tabela: q.tabela, modo: q.modo, corpo: q.corpo });
+    const t = q.tabela;
+    if (!(t in bd)) return erro('42P01', 'tabela desconhecida ' + t);
+    const filtra = (r) => q.filtros.every(([k, v]) => String(r[k]) === String(v));
+    if (q.modo === 'select') {
+      let r = meus(t).filter(filtra);
+      if (q.ordem) r = [...r].sort((a, b) => (a[q.ordem[0]] > b[q.ordem[0]] ? 1 : -1) * q.ordem[1]);
+      if (q.limite) r = r.slice(0, q.limite);
+      return { data: q.um ? (r[0] || null) : r, error: null };
+    }
+    if (q.modo === 'insert') {
+      if (t === 'profiles' || t === 'alimentos') return erro('42501', 'permission denied for table ' + t);
+      const linhas = Array.isArray(q.corpo) ? q.corpo : [q.corpo];
+      for (const l of linhas) {
+        const dono = l.utilizador_id ?? EU;
+        if (dono !== EU) return erro('42501', 'new row violates row-level security policy');
+        bd[t].push({ id: id(), criado_em: new Date().toISOString(), ...l, utilizador_id: dono });
+      }
+      return { data: null, error: null };
+    }
+    if (q.modo === 'update' || q.modo === 'upsert') {
+      const cols = Object.keys(q.corpo);
+      const proibidas = cols.filter(c => !(PODE_ALTERAR[t] || []).includes(c));
+      if (proibidas.length) return erro('42501', 'permission denied for table ' + t + ' (colunas: ' + proibidas.join(', ') + ')');
+      if (q.modo === 'update') { meus(t).filter(filtra).forEach(r => Object.assign(r, q.corpo)); return { data: null, error: null }; }
+      const chave = (q.opcoes.onConflict || 'id').split(',');
+      const linha = { utilizador_id: EU, ...q.corpo };
+      const existe = meus(t).find(r => chave.every(k => String(r[k]) === String(linha[k])));
+      if (existe) Object.assign(existe, q.corpo); else bd[t].push({ id: id(), ...linha });
+      return { data: null, error: null };
+    }
+    if (q.modo === 'delete') {
+      const fica = (bd[t] || []).filter(r => !(meus(t).includes(r) && filtra(r)));
+      bd[t].length = 0; bd[t].push(...fica);
+      return { data: null, error: null };
+    }
+  }
+  function rpc(nome, args) {
+    window.__PEDIDOS__.push({ rpc: nome, args });
+    const p = bd.profiles[0];
+    const peso = [...bd.pesos].sort((a, b) => a.medido_em < b.medido_em ? 1 : -1)[0];
+    if (nome === 'estimar_gasto') {
+      if (!p.sexo || !p.altura_cm || !p.data_nascimento || !p.nivel_atividade || !peso) return { data: [], error: null };
+      return { data: [{ gasto_estimado: 2169, gasto_minimo: 1952, gasto_maximo: 2386, kcal_objetivo: 1627,
+                        kcal_minimo_seguro: 1200, objetivo_ajustado: false, motivo: null }], error: null };
+    }
+    if (nome === 'ultimos_dias') {
+      const dias = [];
+      for (let i = (args?.p_dias || 7) - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
+        const kcal = bd.registos.filter(r => r.data === d).reduce((s, r) => s + r.kcal, 0);
+        dias.push({ data: d, kcal, completo: false });
+      }
+      return { data: dias, error: null };
+    }
+    if (nome === 'procurar_alimento') {
+      const t = String(args?.p_texto || '').toLowerCase();
+      if (t.length < 2) return { data: [], error: null };
+      const meus_ = bd.alimentos_meus.map(a => ({ ...a, fonte: 'meu', meu: true }));
+      const cat = bd.alimentos.map(a => ({ ...a, meu: false }));
+      return { data: [...meus_, ...cat].filter(a => a.nome.toLowerCase().includes(t)), error: null };
+    }
+    return erro('PGRST202', 'função desconhecida ' + nome);
+  }
+  const sessao = cenario.semSessao ? null : {
+    access_token: 'falso', refresh_token: 'falso', expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: EU, email: 'ana@exemplo.com', user_metadata: { full_name: 'Ana' } },
+  };
+  window.supabase = {
+    createClient() {
+      return {
+        auth: {
+          async getSession() { return { data: { session: sessao }, error: null }; },
+          onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
+          async signInWithOAuth() { window.__OAUTH__ = true; return { data: {}, error: null }; },
+          async signOut() { return { error: null }; },
+        },
+        from: construtor,
+        rpc: async (n, a) => rpc(n, a),
+        functions: { async invoke(nome, o) { return window.__FUNCOES__?.[nome]?.(o) ?? { data: null, error: { message: 'sem função ' + nome } }; } },
+      };
+    },
+  };
+})();

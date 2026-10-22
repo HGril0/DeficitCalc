@@ -1,17 +1,18 @@
 # Cabeçalhos de segurança — lidos pelo Cloudflare Pages.
-# O GitHub Pages não suportava isto; é uma vantagem da mudança.
 #
-# Ainda em falta (a fazer com teste antes de ir para o ar):
-#   Content-Security-Policy  — precisa de permitir fonts.googleapis.com,
-#     fonts.gstatic.com, cdn.jsdelivr.net, esm.sh e o domínio do Supabase,
-#     e de 'unsafe-inline' porque os módulos estão dentro do HTML.
-#   Cross-Origin-Opener-Policy: same-origin — seguro aqui (o login do Google
-#     é um redireccionamento de página inteira, não um popup), mas vai junto
-#     com a CSP para ser testado de uma vez.
+# A política de conteúdo (CSP) está também em <meta> em cada página, para
+# valer enquanto a app estiver no GitHub Pages, que não permite cabeçalhos.
+# Aqui acrescenta-se o que a <meta> não consegue: frame-ancestors (impedir
+# que a app seja metida dentro de outro site para enganar quem clica).
+#
+# script-src aponta para o FICHEIRO exato da biblioteca, não para o jsDelivr
+# inteiro: com o domínio todo, qualquer pacote do npm passava a ser permitido.
 
 /*
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://lh3.googleusercontent.com; font-src 'self'; connect-src https://dmjoafdbrgtrbpuqunwu.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000
+  Cross-Origin-Opener-Policy: same-origin

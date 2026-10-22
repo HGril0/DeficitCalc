@@ -8,22 +8,15 @@
 
 import { CONFIG } from './config.js';
 
-const FONTES = [
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/+esm',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
-  'https://esm.sh/@supabase/supabase-js@2.112.4',
-];
-
+// A biblioteca do Supabase é carregada no <head> por um <script> com
+// impressão digital (integrity). Se o servidor entregar um ficheiro diferente
+// do publicado, o browser recusa-o e window.supabase fica vazio.
 async function carregarBiblioteca() {
-  let ultimo = null;
-  for (const url of FONTES) {
-    try {
-      const mod = await import(url);
-      if (mod && mod.createClient) return mod.createClient;
-    } catch (e) { ultimo = e; }
-  }
-  throw new Error('Não foi possível carregar a biblioteca do Supabase. '
-    + 'Verifica a ligação à internet. ' + (ultimo && ultimo.message ? ultimo.message : ''));
+  const lib = window.supabase;
+  if (lib && typeof lib.createClient === 'function') return lib.createClient;
+  throw new Error('Não foi possível carregar a biblioteca do Supabase. Verifica a ligação '
+    + 'à internet. Se persistir, o ficheiro recebido não corresponde à versão esperada '
+    + 'e foi bloqueado por segurança.');
 }
 
 function armazenamento() {

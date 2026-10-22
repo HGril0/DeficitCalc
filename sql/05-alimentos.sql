@@ -154,6 +154,13 @@ do $$ begin
   end if;
 end $$;
 
+-- O dono da linha vem do servidor, não do cliente. Assim o ecrã não precisa
+-- de enviar utilizador_id, e o "upsert" (criar ou atualizar) não pede
+-- permissão para mudar essa coluna — permissão que não existe de propósito,
+-- para ninguém passar dados seus para a conta de outra pessoa. Sem isto,
+-- gravar o peso falhava sempre (encontrado em produção a 22/10/2026).
+alter table public.alimentos_meus alter column utilizador_id set default auth.uid();
+
 alter table public.alimentos_meus enable row level security;
 alter table public.alimentos_meus no force row level security;
 
@@ -226,6 +233,10 @@ grant update (gramas, alimento_id) on public.registos to authenticated;
 --    sempre), depois INSA (tabela oficial portuguesa), depois produtos de
 --    código de barras, e a IA em último porque é estimativa.
 -- ---------------------------------------------------------------------------
+-- security invoker: corre com os poderes de quem chama, por isso o RLS da
+-- tabela aplica-se por baixo. A segurança não depende só das condições
+-- escritas aqui dentro (foi uma delas, a do NULL no estimar_gasto, que falhou
+-- a 22/10/2026). Só o esta_aprovado() precisa de security definer.
 create or replace function public.procurar_alimento(p_texto text, p_limite int default 20)
 returns table (
   id             uuid,
@@ -239,7 +250,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   with procura as (
@@ -272,6 +283,10 @@ as $$
 $$;
 
 -- Leitura por código de barras. Devolve no máximo uma linha.
+-- security invoker: corre com os poderes de quem chama, por isso o RLS da
+-- tabela aplica-se por baixo. A segurança não depende só das condições
+-- escritas aqui dentro (foi uma delas, a do NULL no estimar_gasto, que falhou
+-- a 22/10/2026). Só o esta_aprovado() precisa de security definer.
 create or replace function public.alimento_por_codigo(p_codigo text)
 returns table (
   id             uuid,
@@ -284,7 +299,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select a.id, a.nome, a.marca, a.kcal_100, a.gramas_unidade,

@@ -37,8 +37,40 @@ create table auth.users (
   id                 uuid primary key default gen_random_uuid(),
   email              text unique,
   raw_user_meta_data jsonb default '{}'::jsonb,
+  raw_app_meta_data  jsonb default '{}'::jsonb,
+  email_confirmed_at timestamptz default now(),
+  is_anonymous       boolean not null default false,
   created_at         timestamptz default now()
 );
+
+-- Por onde a pessoa entrou. No Supabase cada login (Google, email, ...) é uma
+-- linha aqui. O porteiro passa a exigir uma identidade Google, por isso o
+-- ambiente de teste tem de as ter.
+create table auth.identities (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  provider      text not null,
+  provider_id   text not null,
+  identity_data jsonb default '{}'::jsonb,
+  created_at    timestamptz default now()
+);
+
+-- Para não ter de mexer em todas as baterias: um utilizador inserido nos
+-- testes ganha uma identidade Google, como acontece no login real, a não ser
+-- que o teste peça outra com raw_user_meta_data->>'_fornecedor'
+-- ('email', 'anonymous' ou 'nenhum' para não criar identidade).
+create or replace function auth._identidade_de_teste() returns trigger
+language plpgsql as $f$
+declare v text := coalesce(new.raw_user_meta_data->>'_fornecedor', 'google');
+begin
+  if v <> 'nenhum' then
+    insert into auth.identities(user_id, provider, provider_id)
+    values (new.id, v, new.id::text);
+  end if;
+  return new;
+end $f$;
+create trigger _identidade_de_teste after insert on auth.users
+  for each row execute function auth._identidade_de_teste();
 
 -- Como no Supabase: lê o "sub" das claims do pedido.
 create or replace function auth.uid() returns uuid

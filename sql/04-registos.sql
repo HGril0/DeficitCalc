@@ -74,6 +74,13 @@ create index if not exists registos_por_dia
 -- ---------------------------------------------------------------------------
 -- 2. RLS: a linha é minha E eu tenho autorização.
 -- ---------------------------------------------------------------------------
+-- O dono da linha vem do servidor, não do cliente. Assim o ecrã não precisa
+-- de enviar utilizador_id, e o "upsert" (criar ou atualizar) não pede
+-- permissão para mudar essa coluna — permissão que não existe de propósito,
+-- para ninguém passar dados seus para a conta de outra pessoa. Sem isto,
+-- gravar o peso falhava sempre (encontrado em produção a 22/10/2026).
+alter table public.registos alter column utilizador_id set default auth.uid();
+
 alter table public.registos enable row level security;
 alter table public.registos no force row level security;
 
@@ -114,6 +121,10 @@ create trigger ao_alterar_registo
 -- ---------------------------------------------------------------------------
 -- 3. O dia: totais por refeição, para o ecrã principal.
 -- ---------------------------------------------------------------------------
+-- security invoker: corre com os poderes de quem chama, por isso o RLS da
+-- tabela aplica-se por baixo. A segurança não depende só das condições
+-- escritas aqui dentro (foi uma delas, a do NULL no estimar_gasto, que falhou
+-- a 22/10/2026). Só o esta_aprovado() precisa de security definer.
 create or replace function public.dia(p_data date default null)
 returns table (
   refeicao   text,
@@ -124,7 +135,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select r.refeicao,
@@ -143,6 +154,10 @@ $$;
 -- 4. A semana: um total por dia, para o gráfico, com os dias vazios incluídos
 --    para o gráfico não encolher quando falta um dia.
 -- ---------------------------------------------------------------------------
+-- security invoker: corre com os poderes de quem chama, por isso o RLS da
+-- tabela aplica-se por baixo. A segurança não depende só das condições
+-- escritas aqui dentro (foi uma delas, a do NULL no estimar_gasto, que falhou
+-- a 22/10/2026). Só o esta_aprovado() precisa de security definer.
 create or replace function public.ultimos_dias(p_dias int default 7)
 returns table (
   data      date,
@@ -151,7 +166,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select d.data::date,

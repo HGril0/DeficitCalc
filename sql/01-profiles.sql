@@ -41,10 +41,7 @@ create policy "ler o proprio perfil"
   to authenticated
   using ( (select auth.uid()) = id );
 
-create policy "criar o proprio perfil"
-  on public.profiles for insert
-  to authenticated
-  with check ( (select auth.uid()) = id );
+-- (sem política de insert: ver o grant abaixo)
 
 create policy "alterar o proprio perfil"
   on public.profiles for update
@@ -59,7 +56,10 @@ create policy "alterar o proprio perfil"
 -- 3. Privilégios
 -- ---------------------------------------------------------------------------
 revoke all on public.profiles from anon, authenticated;
-grant select, insert on public.profiles to authenticated;
+-- Só leitura de tabela. O perfil é criado pelo trigger no primeiro login, não
+-- pelo cliente. Com INSERT aberto, um perfil apagado pelo administrador podia
+-- ser recriado pelo próprio já com aprovado e admin ligados (bateria 05, E1).
+grant select on public.profiles to authenticated;
 
 -- A RLS trabalha ao nível da LINHA, por isso sozinha deixaria o utilizador
 -- alterar qualquer COLUNA da sua própria linha, incluindo admin = true.

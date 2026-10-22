@@ -98,6 +98,12 @@ update public.profiles
 -- 5. A condição que as tabelas seguintes vão usar, ao lado de "esta linha é tua":
 --      using ( (select auth.uid()) = utilizador_id and public.esta_aprovado() )
 -- ---------------------------------------------------------------------------
+-- O email sozinho não prova quem a pessoa é: com o fornecedor "Email" do
+-- Supabase ligado, qualquer pessoa que saiba o email de um convidado pode
+-- inscrever-se com ele e uma palavra-passe. Por isso a aprovação só conta para
+-- quem entrou pelo Google (que já verificou que a conta é dela) e tem o email
+-- confirmado. Testado na bateria 05: o impostor fica de fora mesmo com o email
+-- certo, e mesmo que alguém desligue a confirmação de email no painel.
 create or replace function public.esta_aprovado()
 returns boolean
 language sql
@@ -106,7 +112,13 @@ security definer
 set search_path = ''
 as $$
   select coalesce(
-    (select p.aprovado from public.profiles p where p.id = (select auth.uid())),
+    (select p.aprovado
+       from public.profiles p
+       join auth.users u on u.id = p.id
+      where p.id = (select auth.uid())
+        and u.email_confirmed_at is not null
+        and exists (select 1 from auth.identities i
+                     where i.user_id = p.id and i.provider = 'google')),
     false
   );
 $$;
