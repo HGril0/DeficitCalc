@@ -90,6 +90,25 @@ async function suite() {
   r = await T('G8 alimento pessoal sem dono explícito', req('POST', '/rest/v1/alimentos_meus', { nome: 'TESTE-LEGITIMO', kcal_100: 100 }), (r) => r.s === 201 && r.t.includes(EU));
   await T('G9 pesquisa encontra o meu', req('POST', '/rest/v1/rpc/procurar_alimento', { p_texto: 'TESTE-LEG' }), (r) => r.s === 200 && r.t.includes('"meu":true'));
   await T('G10 apaga alimento pessoal', req('DELETE', `/rest/v1/alimentos_meus?id=eq.${r.j?.[0]?.id}`), ok2);
+  // receitas (passo 8)
+  const RA = '7e570000-0000-0000-0000-00000000b001', IA = '7e570000-0000-0000-0000-00000000b002', AMA = '7e570000-0000-0000-0000-00000000b003';
+  await T('R1 receita alheia', req('GET', `/rest/v1/receitas?id=eq.${RA}`), vazio);
+  await T('R2 ingredientes alheios', req('GET', `/rest/v1/receita_ingredientes?receita_id=eq.${RA}`), vazio);
+  await T('R3 meter ingrediente na receita alheia', req('POST', '/rest/v1/receita_ingredientes', { receita_id: RA, nome: 'Sal a mais', kcal_100: 0, gramas: 9999 }), negado);
+  await T('R4 alterar receita alheia', req('PATCH', `/rest/v1/receitas?id=eq.${RA}`, { porcoes: 1 }), vazio);
+  await T('R5 apagar receita alheia', req('DELETE', `/rest/v1/receitas?id=eq.${RA}`), vazio);
+  await T('R6 apagar ingrediente alheio', req('DELETE', `/rest/v1/receita_ingredientes?id=eq.${IA}`), vazio);
+  await T('R7 resumo sem receitas alheias', req('POST', '/rest/v1/rpc/receitas_resumo', {}), (r) => r.s === 200 && !r.t.includes('MARCADOR'));
+  await T('R8 anónimo lê receitas', req('GET', '/rest/v1/receitas?select=*', null, { token: null }), negado);
+  r = await T('R9 cria receita minha', req('POST', '/rest/v1/receitas', { nome: 'TESTE receita', porcoes: 4, peso_final_g: 800 }), (r) => r.s === 201 && r.t.includes(EU));
+  const RM = r.j?.[0]?.id;
+  r = await T('R10 junta ingredientes', req('POST', '/rest/v1/receita_ingredientes', [{ receita_id: RM, nome: 'Arroz cru', kcal_100: 350, gramas: 200 }, { receita_id: RM, nome: 'Azeite', kcal_100: 884, gramas: 30 }]), (r) => r.s === 201 && r.j?.length === 2);
+  const IM = r.j?.[1]?.id;
+  await T('R11 resumo 965 / 241 / 120.7', req('POST', '/rest/v1/rpc/receitas_resumo', {}), (r) => { const x = (r.j || []).find((x) => x.id === RM); return x && x.kcal_total === 965 && x.kcal_porcao === 241 && Number(x.kcal_100_final) === 120.7; });
+  await T('R12 mover ingrediente para receita alheia', req('PATCH', `/rest/v1/receita_ingredientes?id=eq.${IM}`, { receita_id: RA }), negado);
+  await T('R13 ligar ao alimento pessoal alheio', req('POST', '/rest/v1/receita_ingredientes', { receita_id: RM, nome: 'Molho', kcal_100: 300, gramas: 10, alimento_meu_id: AMA }), negado);
+  await T('R14 passar a receita para outra conta', req('PATCH', `/rest/v1/receitas?id=eq.${RM}`, { utilizador_id: OUTRO }), negado);
+  await T('R15 apaga a receita de teste', req('DELETE', `/rest/v1/receitas?id=eq.${RM}`), ok2);
   const falhas = res.filter((x) => x.startsWith('>>>'));
   console.log(res.join('\n'));
   return `TOTAL ${res.length - falhas.length}/${res.length}` + (falhas.length ? '\n' + falhas.join('\n') : '');

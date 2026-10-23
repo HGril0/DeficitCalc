@@ -23,8 +23,12 @@ if [ "${1:-}" = "producao" ]; then
     git show fa64e6d:sql/$f.sql | $P >/tmp/out.log 2>&1 || { echo "ERRO antigo $f"; tail /tmp/out.log; exit 1; }
   done
   for f in 06-correcao-permissoes 05-alimentos 07-correcao-porteiro 08-correcao-dono-por-omissao \
-           09-correcao-funcoes-invoker 10-funcoes-servidor; do
+           09-correcao-funcoes-invoker; do
     $P -f sql/$f.sql >/tmp/out.log 2>&1 || { echo "ERRO em $f"; tail -15 /tmp/out.log; exit 1; }
+  done
+  # Do 10 em diante, tudo foi aplicado em produção já depois das correções.
+  for f in sql/[1-9][0-9]-*.sql; do
+    $P -f "$f" >/tmp/out.log 2>&1 || { echo "ERRO em $f"; tail -15 /tmp/out.log; exit 1; }
   done
   echo "(base montada com a história de produção)"
 else

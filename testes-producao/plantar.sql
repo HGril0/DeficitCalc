@@ -7,4 +7,7 @@ insert into public.alimentos(id,nome,kcal_100,fonte) values ('7e570000-0000-0000
 -- Perfil preenchido, para o estimar_gasto TER o que devolver se a guarda falhar.
 update public.profiles set sexo='m', data_nascimento='1990-01-01', altura_cm=180, nivel_atividade='leve', objetivo_kg_semana=0.5
  where id='2f92c1ce-b786-4f87-82e7-59bef040def5';
+insert into public.receitas(id,utilizador_id,nome,porcoes) values ('7e570000-0000-0000-0000-00000000b001','2f92c1ce-b786-4f87-82e7-59bef040def5','MARCADOR receita alheia',4) on conflict do nothing;
+insert into public.receita_ingredientes(id,receita_id,utilizador_id,nome,kcal_100,gramas) values ('7e570000-0000-0000-0000-00000000b002','7e570000-0000-0000-0000-00000000b001','2f92c1ce-b786-4f87-82e7-59bef040def5','MARCADOR ingrediente',136,600) on conflict do nothing;
+insert into public.alimentos_meus(id,utilizador_id,nome,kcal_100) values ('7e570000-0000-0000-0000-00000000b003','2f92c1ce-b786-4f87-82e7-59bef040def5','MARCADOR alimento meu alheio',300) on conflict do nothing;
 select 'plantado' as estado;
