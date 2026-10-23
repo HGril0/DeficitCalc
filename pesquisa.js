@@ -1,26 +1,89 @@
-// Pesquisa de alimentos na folha de registo.
+// Componente de pesquisa de alimentos, usado no registo de refeições e nas
+// receitas. Cada página monta-o dentro de um elemento seu.
 //
-// Regra deste ficheiro: NENHUM texto vindo da base de dados ou do Open Food
-// Facts passa por innerHTML. Os nomes dos produtos são escritos por qualquer
-// pessoa na internet; aqui só entram como textContent.
+// Regra deste ficheiro: NADA passa por innerHTML — nem os dados (os nomes do
+// Open Food Facts são escritos por qualquer pessoa na internet), nem o HTML do
+// próprio componente. Tudo é construído com nós DOM e textContent.
 
-const $ = (id) => document.getElementById(id);
 const ROTULO_FONTE = {
   meu: 'teu', insa: 'INSA', codigo_barras: 'código de barras', ia: 'estimativa', off: 'Open Food Facts',
 };
+// Gorduras: o maior erro de quem regista à mão. A colher e a barra dão uma
+// referência visual em vez de pedir gramas de cabeça.
+const COLHER_SOPA_G = 13.7;   // 15 ml de azeite (0,915 g/ml)
+const COLHER_CHA_G = 4.6;     //  5 ml
+const PARTE_MANTEIGA_G = 10;  // barra de 100 g em 10 partes
 
-function el(tag, classe, texto) {
-  const e = document.createElement(tag);
-  if (classe) e.className = classe;
-  if (texto != null) e.textContent = texto;
-  return e;
-}
 const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 const plural = (s, n) => (n === 1 ? s : s.endsWith('ão') ? s.slice(0, -2) + 'ões' : s + 's');
 const arred1 = (v) => Math.round(v * 10) / 10;
+const virgula = (v) => String(arred1(v)).replace('.', ',');
 
-export function montarPesquisa({ supabase, registar, aviso }) {
+// h('div', { id: 'x', className: 'y', type: 'button', aria: { pressed: 'true' } }, 'texto', filho, ...)
+function h(tag, props = {}, ...filhos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null) continue;
+    if (k === 'aria') for (const [a, x] of Object.entries(v)) e.setAttribute('aria-' + a, x);
+    else if (k === 'attrs') for (const [a, x] of Object.entries(v)) e.setAttribute(a, x);
+    else e[k] = v;
+  }
+  for (const f of filhos.flat()) if (f != null) e.append(f);   // strings viram nós de texto
+  return e;
+}
+
+export function tipoGordura(nome) {
+  const n = normalizar(nome);
+  if (/\b(manteiga|margarina|banha)\b/.test(n)) return 'manteiga';
+  if (/\b(azeite|oleo)\b/.test(n)) return 'azeite';
+  return null;
+}
+
+export function montarPesquisa({
+  supabase, aviso, raiz, prefixo = '', rotuloConfirmar = 'Registar',
+  separador = null, esconderAoEscolher = [], aoConfirmar,
+}) {
+  const id = (s) => prefixo + s;
   let locais = [], deFora = [], escolhido = null, modoUnidade = false, temporizador = null, pedido = 0;
+  let colheres = { sopa: 0, cha: 0 };
+
+  // ------------------------------------------------------------ marcação
+  const procura = h('input', { id: id('procura'), type: 'search', maxLength: 60, autocomplete: 'off',
+    placeholder: 'iogurte natural, arroz, pão…', attrs: { enterkeyhint: 'search' } });
+  const resultados = h('ul', { id: id('resultados'), className: 'resultados' });
+  const notaConflito = h('p', { id: id('nota-conflito'), className: 'nota-fonte oculto' });
+  const semResultados = h('p', { id: id('sem-resultados'), className: 'nota-fonte oculto' },
+    'Nada no catálogo com esse nome. Experimenta o Open Food Facts.');
+  const btnOff = h('button', { id: id('btn-off'), type: 'button', className: 'secundario toque' }, 'Procurar no Open Food Facts');
+  const codigo = h('input', { id: id('codigo'), type: 'text', maxLength: 14, autocomplete: 'off',
+    placeholder: '5601234567892', attrs: { inputmode: 'numeric' } });
+  const btnCodigo = h('button', { id: id('btn-codigo'), type: 'button', className: 'secundario toque' }, 'Ler');
+  const blocoPesquisa = h('div', { id: id('bloco-pesquisa') },
+    h('label', { htmlFor: id('procura') }, 'Procurar alimento'), procura, resultados, notaConflito, semResultados, btnOff,
+    h('div', { className: 'dupla linha-codigo' },
+      h('div', {}, h('label', { htmlFor: id('codigo') }, 'Código de barras'), codigo), btnCodigo),
+    separador ? h('p', { className: 'separador' }, separador) : null);
+
+  const escNome = h('div', { id: id('esc-nome'), className: 'esc-nome' });
+  const escFonte = h('div', { id: id('esc-fonte'), className: 'esc-fonte' });
+  const modoGramas = h('button', { id: id('modo-gramas'), type: 'button', className: 'chip toque', aria: { pressed: 'true' } }, 'gramas');
+  const modoUnid = h('button', { id: id('modo-unidade'), type: 'button', className: 'chip toque', aria: { pressed: 'false' } });
+  const unidades = h('div', { id: id('unidades'), className: 'unidades oculto', attrs: { role: 'group', 'aria-label': 'Medir em' } }, modoGramas, modoUnid);
+  const rotQtd = h('label', { id: id('rot-quantidade'), htmlFor: id('quantidade') }, 'Gramas');
+  const quantidade = h('input', { id: id('quantidade'), type: 'number', min: '0.5', max: '5000', step: '1', attrs: { inputmode: 'decimal' } });
+  const escGramas = h('div', { id: id('esc-gramas'), className: 'esc-gramas' });
+  const escKcal = h('span', { id: id('esc-kcal'), className: 'num' }, '0');
+  const ajuda = h('div', { id: id('ajuda-gordura'), className: 'ajuda-gordura oculto' });
+  const btnConfirmar = h('button', { id: id('registar-escolhido'), type: 'button', className: 'principal toque' }, rotuloConfirmar);
+  const btnCancelar = h('button', { id: id('cancelar-escolhido'), type: 'button', className: 'toque ligacao' }, 'Escolher outro');
+  const escolhidoEl = h('div', { id: id('escolhido'), className: 'escolhido oculto' },
+    escNome, escFonte, unidades, ajuda,
+    h('div', { className: 'dupla' },
+      h('div', {}, rotQtd, quantidade, escGramas),
+      h('div', { className: 'esc-total' }, escKcal, h('small', {}, ' kcal'))),
+    btnConfirmar, btnCancelar);
+
+  raiz.replaceChildren(blocoPesquisa, escolhidoEl);
 
   // ------------------------------------------------------------ servidor
   async function funcao(corpo) {
@@ -35,27 +98,17 @@ export function montarPesquisa({ supabase, registar, aviso }) {
 
   // ------------------------------------------------------------ resultados
   function desenharResultados() {
-    const ul = $('resultados');
-    ul.replaceChildren();
-    // Um produto que já está no catálogo não aparece duas vezes.
+    resultados.replaceChildren();
     const idsLocais = new Set(locais.map((a) => a.id));
     const todos = [...locais, ...deFora.filter((c) => !(c.id && idsLocais.has(c.id)))];
     for (const a of todos) {
-      const li = el('li');
-      const b = el('button', 'resultado toque');
-      b.type = 'button';
-      const esq = el('span', 'res-esq');
-      esq.append(el('span', 'res-nome', a.nome));
-      const linha = el('span', 'res-meta');
-      if (a.marca) linha.append(el('span', null, a.marca + ' · '));
-      linha.append(el('span', 'selo-fonte', ROTULO_FONTE[a.fonte] || a.fonte));
-      esq.append(linha);
-      const dir = el('span', 'res-kcal');
-      dir.append(el('span', 'num', String(Math.round(a.kcal_100))), el('small', null, ' kcal/100 g'));
-      b.append(esq, dir);
+      const meta = h('span', { className: 'res-meta' },
+        a.marca ? a.marca + ' · ' : null, h('span', { className: 'selo-fonte' }, ROTULO_FONTE[a.fonte] || a.fonte));
+      const b = h('button', { type: 'button', className: 'resultado toque' },
+        h('span', { className: 'res-esq' }, h('span', { className: 'res-nome' }, a.nome), meta),
+        h('span', { className: 'res-kcal' }, h('span', { className: 'num' }, String(Math.round(a.kcal_100))), h('small', {}, ' kcal/100 g')));
       b.addEventListener('click', () => escolher(a));
-      li.append(b);
-      ul.append(li);
+      resultados.append(h('li', {}, b));
     }
     // Conflitos entre fontes: mostrar, não escolher em silêncio (decisão do plano).
     const grupos = new Map();
@@ -65,24 +118,20 @@ export function montarPesquisa({ supabase, registar, aviso }) {
       grupos.get(k).push(a);
     }
     const conflito = [...grupos.values()].find((g) => {
-      const fontes = new Set(g.map((a) => a.fonte));
       const v = g.map((a) => Number(a.kcal_100));
-      return fontes.size > 1 && Math.max(...v) > Math.min(...v) * 1.15;
+      return new Set(g.map((a) => a.fonte)).size > 1 && Math.max(...v) > Math.min(...v) * 1.15;
     });
-    const nota = $('nota-conflito');
     if (conflito) {
       const v = conflito.map((a) => Math.round(a.kcal_100));
-      nota.textContent = `"${conflito[0].nome}" tem valores diferentes conforme a fonte (${Math.min(...v)} a ${Math.max(...v)} kcal por 100 g). `
+      notaConflito.textContent = `"${conflito[0].nome}" tem valores diferentes conforme a fonte (${Math.min(...v)} a ${Math.max(...v)} kcal por 100 g). `
         + 'Escolhe o que corresponde ao que comeste — a embalagem manda.';
-      nota.classList.remove('oculto');
-    } else {
-      nota.classList.add('oculto');
     }
-    $('sem-resultados').classList.toggle('oculto', todos.length > 0 || $('procura').value.trim().length < 2);
+    notaConflito.classList.toggle('oculto', !conflito);
+    semResultados.classList.toggle('oculto', todos.length > 0 || procura.value.trim().length < 2);
   }
 
   async function procurarLocal() {
-    const texto = $('procura').value.trim();
+    const texto = procura.value.trim();
     deFora = [];
     if (texto.length < 2) { locais = []; desenharResultados(); return; }
     const meu = ++pedido;
@@ -94,10 +143,9 @@ export function montarPesquisa({ supabase, registar, aviso }) {
   }
 
   async function procurarFora() {
-    const texto = $('procura').value.trim();
+    const texto = procura.value.trim();
     if (texto.length < 2) { aviso('Escreve pelo menos duas letras.', 'erro'); return; }
-    const btn = $('btn-off');
-    btn.disabled = true; btn.textContent = 'A procurar…';
+    btnOff.disabled = true; btnOff.textContent = 'A procurar…';
     try {
       const r = await funcao({ acao: 'procurar', texto });
       if (!r.ok) { aviso(r.erro, 'erro'); return; }
@@ -112,109 +160,157 @@ export function montarPesquisa({ supabase, registar, aviso }) {
       if (!deFora.length) aviso('O Open Food Facts não tem nada com esse nome à venda em Portugal.', 'bom');
       desenharResultados();
     } finally {
-      btn.disabled = false; btn.textContent = 'Procurar no Open Food Facts';
+      btnOff.disabled = false; btnOff.textContent = 'Procurar no Open Food Facts';
     }
   }
 
   async function lerCodigo() {
-    const codigo = $('codigo').value.replace(/\D/g, '');
-    if (codigo.length < 8 || codigo.length > 14) { aviso('O código de barras tem entre 8 e 14 algarismos.', 'erro'); return; }
-    const btn = $('btn-codigo');
-    btn.disabled = true;
+    const c = codigo.value.replace(/\D/g, '');
+    if (c.length < 8 || c.length > 14) { aviso('O código de barras tem entre 8 e 14 algarismos.', 'erro'); return; }
+    btnCodigo.disabled = true;
     try {
-      const r = await funcao({ acao: 'codigo', codigo });
+      const r = await funcao({ acao: 'codigo', codigo: c });
       if (!r.ok) { aviso(r.erro, 'erro'); return; }
-      $('codigo').value = '';
+      codigo.value = '';
       escolher({ ...r.corpo.alimento, fonte: 'codigo_barras' });
-    } finally { btn.disabled = false; }
+    } finally { btnCodigo.disabled = false; }
+  }
+
+  // ------------------------------------------------------------ gorduras
+  function desenharAjuda() {
+    const tipo = escolhido && tipoGordura(escolhido.nome);
+    ajuda.classList.toggle('oculto', !tipo);
+    ajuda.replaceChildren();
+    if (tipo === 'manteiga') {
+      const g = gramasAtuais();
+      const partes = Math.round(g / PARTE_MANTEIGA_G);
+      const barra = h('div', { className: 'barra-manteiga', attrs: { role: 'group', 'aria-label': 'Partes da barra de manteiga' } });
+      for (let i = 1; i <= 10; i++) {
+        const p = h('button', { type: 'button', className: 'parte toque' + (i <= partes ? ' cheia' : ''),
+          aria: { label: `${i * PARTE_MANTEIGA_G} gramas`, pressed: String(i <= partes) } });
+        p.addEventListener('click', () => { definirModo(false); quantidade.value = String(i * PARTE_MANTEIGA_G); atualizarTotal(); });
+        barra.append(p);
+      }
+      ajuda.append(h('div', { className: 'ajuda-titulo' }, 'Barra de 100 g — toca até onde usaste'), barra,
+        h('div', { className: 'ajuda-nota' }, `cada parte são ${PARTE_MANTEIGA_G} g · uma noz de manteiga anda pelos 10 g`));
+    } else if (tipo === 'azeite') {
+      const linha = (qual, rotulo, g) => {
+        const n = colheres[qual];
+        const pintas = h('span', { className: 'pintas', aria: { hidden: 'true' } });
+        for (let i = 0; i < Math.max(n, 1); i++) pintas.append(h('span', { className: 'pinta' + (i < n ? ' cheia' : '') }));
+        const menos = h('button', { type: 'button', className: 'contador toque', aria: { label: 'menos uma ' + rotulo } }, '−');
+        const mais = h('button', { type: 'button', className: 'contador toque', aria: { label: 'mais uma ' + rotulo } }, '+');
+        const mudar = (d) => {
+          colheres[qual] = Math.max(0, Math.min(20, colheres[qual] + d));
+          definirModo(false);
+          quantidade.value = String(arred1(colheres.sopa * COLHER_SOPA_G + colheres.cha * COLHER_CHA_G) || '');
+          atualizarTotal();
+        };
+        menos.addEventListener('click', () => mudar(-1));
+        mais.addEventListener('click', () => mudar(+1));
+        return h('div', { className: 'linha-colher' },
+          h('span', { className: 'colher-rotulo' }, `${rotulo} `, h('small', {}, `≈ ${virgula(g)} g`)),
+          pintas, h('span', { className: 'colher-n num', attrs: { 'data-colher': qual } }, String(n)), menos, mais);
+      };
+      ajuda.append(h('div', { className: 'ajuda-titulo' }, 'Quantas colheres?'),
+        linha('sopa', 'Colher de sopa', COLHER_SOPA_G), linha('cha', 'Colher de chá', COLHER_CHA_G),
+        h('div', { className: 'ajuda-nota' }, 'um fio "a olho" numa frigideira costuma ser uma a duas colheres de sopa'));
+    }
   }
 
   // ------------------------------------------------------------ quantidade
   function gramasAtuais() {
-    const q = Number($('quantidade').value);
-    if (!Number.isFinite(q) || q <= 0) return 0;
+    const q = Number(quantidade.value);
+    if (!escolhido || !Number.isFinite(q) || q <= 0) return 0;
     return modoUnidade && escolhido.gramas_unidade ? q * Number(escolhido.gramas_unidade) : q;
   }
-  function kcalAtuais() { return Math.round(Number(escolhido.kcal_100) * gramasAtuais() / 100); }
+  const kcalAtuais = () => Math.round(Number(escolhido.kcal_100) * gramasAtuais() / 100);
   function atualizarTotal() {
-    $('esc-kcal').textContent = String(kcalAtuais());
+    escKcal.textContent = String(kcalAtuais());
     const g = gramasAtuais();
-    $('esc-gramas').textContent = modoUnidade && g ? `= ${arred1(g)} g` : '';
+    escGramas.textContent = modoUnidade && g ? `= ${arred1(g)} g` : '';
+    if (tipoGordura(escolhido.nome) === 'manteiga') desenharAjuda();
   }
   function definirModo(unidade) {
+    if (modoUnidade === unidade && quantidade.value) return;
     modoUnidade = unidade;
-    $('modo-gramas').setAttribute('aria-pressed', String(!unidade));
-    $('modo-unidade').setAttribute('aria-pressed', String(unidade));
-    $('rot-quantidade').textContent = unidade ? plural(escolhido.nome_unidade, 2).replace(/^./, (c) => c.toUpperCase()) : 'Gramas';
-    $('quantidade').value = unidade ? '1' : '100';
-    $('quantidade').step = unidade ? '0.5' : '1';
+    modoGramas.setAttribute('aria-pressed', String(!unidade));
+    modoUnid.setAttribute('aria-pressed', String(unidade));
+    rotQtd.textContent = unidade ? plural(escolhido.nome_unidade, 2).replace(/^./, (c) => c.toUpperCase()) : 'Gramas';
+    quantidade.value = unidade ? '1' : (tipoGordura(escolhido.nome) ? '' : '100');
+    quantidade.step = unidade ? '0.5' : '1';
     atualizarTotal();
   }
   function escolher(a) {
     escolhido = a;
-    $('esc-nome').textContent = a.nome + (a.marca ? ` (${a.marca})` : '');
-    $('esc-fonte').textContent = `${Math.round(a.kcal_100)} kcal por 100 g · ${ROTULO_FONTE[a.fonte] || a.fonte}`
+    colheres = { sopa: 0, cha: 0 };
+    escNome.textContent = a.nome + (a.marca ? ` (${a.marca})` : '');
+    escFonte.textContent = `${Math.round(a.kcal_100)} kcal por 100 g · ${ROTULO_FONTE[a.fonte] || a.fonte}`
       + (a.fonte === 'ia' ? ' — valor estimado, confirma se puderes' : '');
     const temUnidade = Number(a.gramas_unidade) > 0 && a.nome_unidade;
-    $('unidades').classList.toggle('oculto', !temUnidade);
-    if (temUnidade) $('modo-unidade').textContent = `${a.nome_unidade} (${arred1(Number(a.gramas_unidade))} g)`;
+    unidades.classList.toggle('oculto', !temUnidade);
+    if (temUnidade) modoUnid.textContent = `${a.nome_unidade} (${arred1(Number(a.gramas_unidade))} g)`;
+    modoUnidade = null;                          // força definirModo a desenhar
     definirModo(!!temUnidade);
-    $('bloco-pesquisa').classList.add('oculto');
-    $('form-item').classList.add('oculto');
-    $('escolhido').classList.remove('oculto');
-    setTimeout(() => $('quantidade').focus(), 80);
+    desenharAjuda();
+    blocoPesquisa.classList.add('oculto');
+    esconderAoEscolher.forEach((e) => e.classList.add('oculto'));
+    escolhidoEl.classList.remove('oculto');
+    setTimeout(() => quantidade.focus(), 80);
   }
   function largar() {
     escolhido = null;
-    $('escolhido').classList.add('oculto');
-    $('bloco-pesquisa').classList.remove('oculto');
-    $('form-item').classList.remove('oculto');
+    escolhidoEl.classList.add('oculto');
+    blocoPesquisa.classList.remove('oculto');
+    esconderAoEscolher.forEach((e) => e.classList.remove('oculto'));
   }
 
-  async function registarEscolhido() {
+  async function confirmar() {
     const g = gramasAtuais(), kcal = kcalAtuais();
     if (!(g > 0 && g <= 5000)) { aviso('A quantidade tem de estar entre 1 e 5000 g.', 'erro'); return; }
-    if (kcal > 5000) { aviso('Isso passa de 5000 kcal num só registo. Divide em partes.', 'erro'); return; }
-    const btn = $('registar-escolhido');
-    btn.disabled = true;
+    if (kcal > 5000) { aviso('Isso passa de 5000 kcal de uma vez. Divide em partes.', 'erro'); return; }
+    btnConfirmar.disabled = true;
     try {
-      let id = escolhido.fonte === 'meu' ? null : escolhido.id || null;
+      let alimentoId = escolhido.fonte === 'meu' ? null : escolhido.id || null;
       // Candidato do Open Food Facts ainda fora do catálogo: guarda-o primeiro,
       // pelo caminho que valida (o servidor), para ficar disponível a todos.
-      if (!id && escolhido.fonte === 'off' && escolhido.codigo) {
+      if (!alimentoId && escolhido.fonte === 'off' && escolhido.codigo) {
         const r = await funcao({ acao: 'codigo', codigo: escolhido.codigo });
-        if (r.ok && r.corpo.alimento) id = r.corpo.alimento.id;
+        if (r.ok && r.corpo.alimento) alimentoId = r.corpo.alimento.id;
       }
-      const qtd = modoUnidade
-        ? `${Number($('quantidade').value)} ${plural(escolhido.nome_unidade, Number($('quantidade').value))} (${arred1(g)} g)`
-        : `${arred1(g)} g`;
-      const descricao = `${escolhido.nome}${escolhido.marca ? ' (' + escolhido.marca + ')' : ''} · ${qtd}`.slice(0, 160);
-      const fonte = { meu: 'manual', insa: 'insa', codigo_barras: 'codigo_barras', off: 'codigo_barras', ia: 'ia' }[escolhido.fonte] || 'manual';
-      await registar({ descricao, kcal, gramas: arred1(g), alimento_id: id, fonte, estimativa: escolhido.fonte === 'ia' });
-      $('procura').value = ''; locais = []; deFora = [];
+      const n = Number(quantidade.value);
+      const qtdTexto = modoUnidade ? `${n} ${plural(escolhido.nome_unidade, n)} (${arred1(g)} g)` : `${arred1(g)} g`;
+      const nome = `${escolhido.nome}${escolhido.marca ? ' (' + escolhido.marca + ')' : ''}`;
+      await aoConfirmar({
+        nome: nome.slice(0, 140), kcal_100: Number(escolhido.kcal_100), gramas: arred1(g), kcal, qtdTexto,
+        descricao: `${nome} · ${qtdTexto}`.slice(0, 160),
+        alimento_id: alimentoId,
+        alimento_meu_id: escolhido.fonte === 'meu' ? escolhido.id : null,
+        fonte: { meu: 'manual', insa: 'insa', codigo_barras: 'codigo_barras', off: 'codigo_barras', ia: 'ia' }[escolhido.fonte] || 'manual',
+        estimativa: escolhido.fonte === 'ia',
+      });
+      procura.value = ''; locais = []; deFora = [];
       desenharResultados();
       largar();
     } catch (e) {
       aviso(e && e.message ? e.message : String(e), 'erro');
-    } finally { btn.disabled = false; }
+    } finally { btnConfirmar.disabled = false; }
   }
 
   // ------------------------------------------------------------ ligações
-  $('procura').addEventListener('input', () => {
-    clearTimeout(temporizador);
-    temporizador = setTimeout(procurarLocal, 250);
-  });
-  $('procura').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); procurarFora(); } });
-  $('btn-off').addEventListener('click', procurarFora);
-  $('btn-codigo').addEventListener('click', lerCodigo);
-  $('codigo').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); lerCodigo(); } });
-  $('quantidade').addEventListener('input', atualizarTotal);
-  $('modo-gramas').addEventListener('click', () => definirModo(false));
-  $('modo-unidade').addEventListener('click', () => definirModo(true));
-  $('registar-escolhido').addEventListener('click', registarEscolhido);
-  $('cancelar-escolhido').addEventListener('click', largar);
+  procura.addEventListener('input', () => { clearTimeout(temporizador); temporizador = setTimeout(procurarLocal, 250); });
+  procura.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); procurarFora(); } });
+  btnOff.addEventListener('click', procurarFora);
+  btnCodigo.addEventListener('click', lerCodigo);
+  codigo.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); lerCodigo(); } });
+  quantidade.addEventListener('input', () => { colheres = { sopa: 0, cha: 0 }; atualizarTotal(); if (tipoGordura(escolhido?.nome) === 'azeite') desenharAjuda(); });
+  modoGramas.addEventListener('click', () => definirModo(false));
+  modoUnid.addEventListener('click', () => definirModo(true));
+  btnConfirmar.addEventListener('click', confirmar);
+  btnCancelar.addEventListener('click', largar);
 
   return {
-    limpar() { $('procura').value = ''; $('codigo').value = ''; locais = []; deFora = []; desenharResultados(); largar(); },
+    limpar() { procura.value = ''; codigo.value = ''; locais = []; deFora = []; desenharResultados(); largar(); },
+    focar() { setTimeout(() => procura.focus(), 120); },
   };
 }

@@ -219,6 +219,114 @@ async function abrirAlmoco(a) {
   T('E16 produto novo do OFF é guardado pelo servidor antes de registar', JSON.stringify(ped) === '["procurar","codigo"]', JSON.stringify(ped));
   await limpo('E16', a); await a.ctx.close(); }
 
+// ---------------------------------------------------------------- gorduras
+const GORD = [
+  { id: 'cat-azeite', nome: 'Azeite virgem extra', marca: null, kcal_100: 884, fonte: 'insa', gramas_unidade: null, nome_unidade: null },
+  { id: 'cat-manteiga', nome: 'Manteiga', marca: null, kcal_100: 740, fonte: 'insa', gramas_unidade: null, nome_unidade: null },
+  { id: 'cat-arroz-cru', nome: 'Arroz agulha cru', marca: null, kcal_100: 350, fonte: 'insa', gramas_unidade: null, nome_unidade: null },
+];
+{ const a = await abrir('hoje.html', { alimentos: GORD });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'azeite'); await a.page.waitForTimeout(600);
+  await a.page.locator('#resultados button').first().click();
+  T('E17 azeite mostra as colheres', await a.page.locator('#ajuda-gordura').isVisible() && (await a.page.textContent('#ajuda-gordura')).includes('Colher de sopa'));
+  await a.page.getByRole('button', { name: 'mais uma Colher de sopa' }).click();
+  await a.page.getByRole('button', { name: 'mais uma Colher de sopa' }).click();
+  T('E17 duas colheres de sopa = 27,4 g', (await a.page.inputValue('#quantidade')) === '27.4', await a.page.inputValue('#quantidade'));
+  T('E17 e 242 kcal', (await a.page.textContent('#esc-kcal')) === '242', await a.page.textContent('#esc-kcal'));
+  await a.page.getByRole('button', { name: 'mais uma Colher de chá' }).click();
+  T('E17 mais uma de chá = 32 g', (await a.page.inputValue('#quantidade')) === '32', await a.page.inputValue('#quantidade'));
+  await limpo('E17', a); await a.ctx.close(); }
+{ const a = await abrir('hoje.html', { alimentos: GORD });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'manteiga'); await a.page.waitForTimeout(600);
+  await a.page.locator('#resultados button').first().click();
+  T('E18 manteiga mostra a barra', await a.page.locator('.barra-manteiga').isVisible());
+  await a.page.getByRole('button', { name: '30 gramas' }).click();
+  T('E18 três partes = 30 g e 222 kcal', (await a.page.inputValue('#quantidade')) === '30' && (await a.page.textContent('#esc-kcal')) === '222');
+  T('E18 a barra mostra 3 partes cheias', (await a.page.locator('.barra-manteiga .parte.cheia').count()) === 3);
+  await limpo('E18', a); await a.ctx.close(); }
+
+// ---------------------------------------------------------------- receitas
+const HOJE = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
+async function novaReceita(a, nome, porcoes = '4', peso = '800') {
+  await a.page.click('#nova');
+  await a.page.fill('#r-nome', nome); await a.page.fill('#r-porcoes', porcoes); await a.page.fill('#r-peso', peso);
+  await a.page.click('#r-guardar'); await a.page.waitForTimeout(400);
+}
+async function juntarIngrediente(a, texto, gramas) {
+  await a.page.fill('#ing-procura', texto); await a.page.waitForTimeout(600);
+  await a.page.locator('#ing-resultados button').first().click();
+  if (gramas != null) await a.page.fill('#ing-quantidade', String(gramas));
+  return a;
+}
+{ const a = await abrir('receitas.html', { alimentos: GORD });
+  T('E19 sem receitas mostra a explicação', await a.page.locator('#sem-receitas').isVisible());
+  await novaReceita(a, 'Arroz de legumes');
+  T('E19 criar abre os ingredientes', await a.page.locator('#r-corpo').isVisible() && (await a.page.textContent('#titulo')) === 'Arroz de legumes');
+  await juntarIngrediente(a, 'arroz', 200); await a.page.click('#ing-registar-escolhido'); await a.page.waitForTimeout(400);
+  await juntarIngrediente(a, 'azeite');
+  await a.page.getByRole('button', { name: 'mais uma Colher de sopa' }).click();
+  await a.page.getByRole('button', { name: 'mais uma Colher de sopa' }).click();
+  T('E19 o botão diz "Juntar à receita"', (await a.page.textContent('#ing-registar-escolhido')) === 'Juntar à receita');
+  await a.page.click('#ing-registar-escolhido'); await a.page.waitForTimeout(400);
+  const tot = [await a.page.textContent('#r-total'), await a.page.textContent('#r-porcao'), await a.page.textContent('#r-100')];
+  T('E19 totais 942 / 236 por porção / 118 por 100 g', tot.join('/') === '942/236/118', tot.join('/'));
+  T('E19 dois ingredientes na lista', (await a.page.locator('#r-ingredientes li').count()) === 2);
+  const ings = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'receita_ingredientes' && p.modo === 'insert').map(p => p.corpo));
+  T('E19 ingredientes guardados em gramas, sem dono no pedido', ings.length === 2 && ings[1].gramas === 27.4 && ings.every(i => !('utilizador_id' in i)), JSON.stringify(ings));
+  // registar 1 porção ao almoço, depois 300 g ao jantar
+  await a.page.selectOption('#r-refeicao', 'almoco');
+  T('E19 uma porção = 236 kcal', (await a.page.textContent('#r-kcal')) === '236');
+  await a.page.click('#r-registar'); await a.page.waitForTimeout(400);
+  T('E19 confirma o registo', (await a.page.textContent('#msg')).includes('Registado no almoço'), await a.page.textContent('#msg'));
+  await a.page.click('#r-modo-gramas');
+  T('E19 em gramas, sugere uma porção (200 g)', (await a.page.inputValue('#r-qtd')) === '200');
+  await a.page.fill('#r-qtd', '300'); await a.page.selectOption('#r-refeicao', 'jantar');
+  T('E19 300 g = 353 kcal', (await a.page.textContent('#r-kcal')) === '353', await a.page.textContent('#r-kcal'));
+  await a.page.click('#r-registar'); await a.page.waitForTimeout(400);
+  const regs = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'registos' && p.modo === 'insert').map(p => p.corpo));
+  T('E19 registos certos (porção e gramas)', regs.length === 2
+    && regs[0].refeicao === 'almoco' && regs[0].kcal === 236 && regs[0].gramas === 200 && regs[0].descricao === 'Arroz de legumes (receita) · 1 porção'
+    && regs[1].refeicao === 'jantar' && regs[1].kcal === 353 && regs[1].gramas === 300 && regs.every(r => !('utilizador_id' in r)), JSON.stringify(regs));
+  // tirar um ingrediente
+  await a.page.getByRole('button', { name: /^Tirar Azeite/ }).click(); await a.page.waitForTimeout(400);
+  T('E19 tirar o azeite deixa 700 kcal', (await a.page.textContent('#r-total')) === '700');
+  // voltar à lista
+  await a.page.click('#voltar'); await a.page.waitForTimeout(400);
+  T('E19 a lista mostra a receita e as kcal por porção', (await a.page.textContent('#receitas')).includes('Arroz de legumes') && (await a.page.textContent('#receitas')).includes('175'));
+  await limpo('E19', a); await a.ctx.close(); }
+
+{ const a = await abrir('receitas.html', { alimentos: GORD });
+  await novaReceita(a, 'Sopa');
+  await a.page.click('#voltar'); await a.page.waitForTimeout(300);
+  await novaReceita(a, 'Sopa');
+  T('E20 nome repetido é explicado', (await a.page.textContent('#msg')).includes('Já tens uma receita com esse nome'), await a.page.textContent('#msg'));
+  await limpo('E20', a); await a.ctx.close(); }
+
+{ const a = await abrir('receitas.html', { alimentos: GORD, registos: [{ id: 'r-falta', utilizador_id: 'aaaaaaaa-0000-0000-0000-000000000001', data: HOJE, refeicao: 'jantar', kcal: 0, nao_comi: true }] });
+  await novaReceita(a, 'Bacalhau');
+  await juntarIngrediente(a, 'arroz', 100); await a.page.click('#ing-registar-escolhido'); await a.page.waitForTimeout(400);
+  await a.page.selectOption('#r-refeicao', 'jantar'); await a.page.click('#r-registar'); await a.page.waitForTimeout(400);
+  T('E21 não regista num jantar marcado como não comido', (await a.page.textContent('#msg')).includes('não comido'), await a.page.textContent('#msg'));
+  T('E21 e não chegou a inserir', (await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'registos' && p.modo === 'insert').length)) === 0);
+  await limpo('E21', a); await a.ctx.close(); }
+
+{ const MAU = '<img src=x onerror="window.__XSS__=1">Bolo';
+  const a = await abrir('receitas.html', { alimentos: GORD });
+  await novaReceita(a, MAU);
+  T('E22 o título mostra o nome como texto', (await a.page.textContent('#titulo')) === MAU && (await a.page.locator('#titulo img').count()) === 0);
+  await a.page.click('#voltar'); await a.page.waitForTimeout(300);
+  T('E22 a lista também', (await a.page.textContent('#receitas')).includes('<img src=x') && (await a.page.locator('#receitas img').count()) === 0);
+  T('E22 e o código não correu', await a.page.evaluate(() => window.__XSS__ === undefined));
+  // apagar em dois toques
+  await a.page.locator('#receitas button').first().click(); await a.page.waitForTimeout(300);
+  await a.page.click('#r-apagar');
+  T('E23 o primeiro toque só pede confirmação', (await a.page.textContent('#r-apagar')).includes('outra vez') && (await a.page.evaluate(() => window.__BD__.receitas.length)) === 1);
+  await a.page.click('#r-apagar'); await a.page.waitForTimeout(400);
+  T('E23 o segundo apaga e volta à lista vazia', (await a.page.evaluate(() => window.__BD__.receitas.length)) === 0 && await a.page.locator('#sem-receitas').isVisible());
+  await limpo('E22/E23', a); await a.ctx.close(); }
+
 await browser.close(); srv.kill();
 let falhas = 0;
 for (const r of resultados) { if (!r.ok) falhas++; console.log((r.ok ? 'PASSA' : '>>> FALHA') + ' | ' + r.nome + (r.ok || !r.obs ? '' : ' | ' + r.obs)); }

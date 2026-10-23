@@ -237,7 +237,7 @@ function abrirFolha(ref) {
   $('descricao').value = '';
   $('kcal').value = '';
   pesquisa.limpar();
-  setTimeout(() => $('procura').focus(), 120);
+  pesquisa.focar();
 }
 
 function fecharFolha() {
@@ -382,8 +382,11 @@ async function principal() {
   pesquisa = montarPesquisa({
     supabase,
     aviso,
+    raiz: $('pesquisa-raiz'),
+    separador: 'ou escreve à mão',
+    esconderAoEscolher: [$('form-item')],
     // Chamado quando a pessoa escolhe um alimento e a quantidade.
-    async registar(d) {
+    async aoConfirmar(d) {
       if (!refeicaoAberta) throw new Error('Abre uma refeição primeiro.');
       if (saltada(refeicaoAberta)) throw new Error('Esta refeição está marcada como não comida. Anula isso primeiro.');
       const { error } = await supabase.from('registos').insert({

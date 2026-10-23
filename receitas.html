@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://lh3.googleusercontent.com; font-src 'self'; connect-src https://dmjoafdbrgtrbpuqunwu.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; upgrade-insecure-requests">
+<title>Receitas — Restam</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04060A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Restam">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="stylesheet" href="fontes.css">
+<link rel="stylesheet" href="estilo.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js"
+        integrity="sha384-ysv13JVP3fufiEXfjML9OdCa/rRbMJvUBOWyor82wfuK8INNZAvmbxHgKIHi+oqz"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="module" src="tema.js"></script>
+<style>
+  .cartao { padding: 18px 20px; margin-bottom: 12px; }
+  .lista-receitas { list-style: none; margin: 10px 0 0; padding: 0; }
+  .lista-receitas li + li { border-top: 1px solid var(--divisoria); }
+  .item-receita { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+                  padding: 13px 2px; background: none; border: 0; text-align: left; color: var(--texto); }
+  .item-receita .nome { font-size: 16px; }
+  .item-receita .meta { font-size: 12px; color: var(--fraco); margin-top: 2px; }
+  .item-receita .kcal { font-size: 22px; white-space: nowrap; }
+  .item-receita .kcal small { font-size: 11px; color: var(--fraco); font-family: 'IBM Plex Sans', sans-serif; }
+  .vazio { color: var(--fraco); font-size: 14px; padding: 10px 0 2px; }
+  .totais { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 6px; text-align: center; }
+  .totais .v { font-size: 26px; line-height: 1.1; }
+  .totais .r { font-size: 11px; color: var(--fraco); }
+  .ingredientes { list-style: none; margin: 8px 0 0; padding: 0; }
+  .ingredientes li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; }
+  .ingredientes li + li { border-top: 1px solid var(--divisoria); }
+  .ingredientes .ing-nome { font-size: 14.5px; }
+  .ingredientes .ing-meta { font-size: 12px; color: var(--fraco); }
+  .ingredientes .dir { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .apagar { font-size: 12px; color: var(--acento); text-decoration: underline; min-height: 0; background: none; border: 0; }
+  .titulo-secao { font-size: 13px; font-weight: 600; margin: 18px 0 4px; color: var(--fraco); text-transform: uppercase; letter-spacing: .04em; }
+  .registar-total { font-size: 34px; text-align: right; }
+  .registar-total small { font-size: 13px; color: var(--fraco); font-family: 'IBM Plex Sans', sans-serif; }
+  .perigo { width: 100%; margin-top: 18px; padding: 12px; border-radius: 14px; font-size: 14px; background: none;
+            border: 1px solid var(--vidro-borda-leve); color: var(--barra-alta-texto); }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="redondo toque oculto" id="voltar" aria-label="Voltar à lista">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <h1 id="titulo">Receitas</h1>
+  </div>
+  <button class="redondo toque" id="btn-tema"></button>
+</div>
+
+<div id="msg" class="aviso oculto"></div>
+
+<section class="vidro cartao" id="lista">
+  <button type="button" class="principal toque" id="nova">Nova receita</button>
+  <ul class="lista-receitas" id="receitas"></ul>
+  <p class="vazio oculto" id="sem-receitas">Ainda não tens receitas. As que fazes muitas vezes são as que mais valem a pena: registas a receita uma vez e depois é só dizer quanto comeste.</p>
+</section>
+
+<section class="vidro cartao oculto" id="editor">
+  <label for="r-nome">Nome</label>
+  <input type="text" id="r-nome" maxlength="120" autocomplete="off" placeholder="Arroz de frango da mãe">
+  <div class="dupla">
+    <div>
+      <label for="r-porcoes">Dá quantas porções</label>
+      <input type="number" id="r-porcoes" min="0.5" max="100" step="0.5" inputmode="decimal" value="4">
+    </div>
+    <div>
+      <label for="r-peso">Peso final (g, opcional)</label>
+      <input type="number" id="r-peso" min="1" max="50000" step="1" inputmode="numeric" placeholder="pesa o tacho">
+    </div>
+  </div>
+  <button type="button" class="secundario toque" id="r-guardar">Criar receita</button>
+
+  <div id="r-corpo" class="oculto">
+    <div class="totais">
+      <div><div class="v num" id="r-total">0</div><div class="r">kcal no total</div></div>
+      <div><div class="v num" id="r-porcao">0</div><div class="r">por porção</div></div>
+      <div><div class="v num" id="r-100">—</div><div class="r">por 100 g</div></div>
+    </div>
+
+    <p class="titulo-secao">Ingredientes</p>
+    <ul class="ingredientes" id="r-ingredientes"></ul>
+    <p class="vazio oculto" id="sem-ingredientes">Junta os ingredientes crus, como entram no tacho. A gordura conta muito — usa a barra ou as colheres.</p>
+    <div id="ing-raiz"></div>
+
+    <p class="titulo-secao">Registar no dia de hoje</p>
+    <label for="r-refeicao">Refeição</label>
+    <select id="r-refeicao">
+      <option value="pequeno_almoco">Pequeno-almoço</option>
+      <option value="almoco">Almoço</option>
+      <option value="jantar">Jantar</option>
+      <option value="lanche">Lanche</option>
+    </select>
+    <div class="unidades oculto" id="r-modos" role="group" aria-label="Medir em">
+      <button type="button" class="chip toque" id="r-modo-porcoes" aria-pressed="true">porções</button>
+      <button type="button" class="chip toque" id="r-modo-gramas" aria-pressed="false">gramas no prato</button>
+    </div>
+    <div class="dupla">
+      <div>
+        <label for="r-qtd" id="r-rot-qtd">Porções</label>
+        <input type="number" id="r-qtd" min="0.25" max="5000" step="0.25" inputmode="decimal" value="1">
+      </div>
+      <div class="registar-total"><span class="num" id="r-kcal">0</span><small> kcal</small></div>
+    </div>
+    <button type="button" class="principal toque" id="r-registar">Registar</button>
+
+    <button type="button" class="perigo toque" id="r-apagar">Apagar receita</button>
+  </div>
+</section>
+
+<nav class="vidro nav">
+  <a href="hoje.html">Hoje</a>
+  <a href="receitas.html" aria-current="page">Receitas</a>
+  <a href="perfil.html">Perfil</a>
+</nav>
+
+<script type="module" src="receitas.js"></script>
+</body>
+</html>

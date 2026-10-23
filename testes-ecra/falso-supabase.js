@@ -9,12 +9,15 @@
     pesos: ['kg', 'medido_em'],
     registos: ['data', 'refeicao', 'descricao', 'kcal', 'nao_comi', 'fonte', 'estimativa', 'gramas', 'alimento_id'],
     alimentos_meus: ['nome', 'kcal_100', 'gramas_unidade', 'nome_unidade'],
+    receitas: ['nome', 'porcoes', 'peso_final_g', 'notas'],
+    receita_ingredientes: ['nome', 'kcal_100', 'gramas', 'alimento_id', 'alimento_meu_id', 'ordem'],
   };
   const cenario = window.__CENARIO__ || {};
   const bd = {
     profiles: [{ id: EU, email: 'ana@exemplo.com', nome: 'Ana', aprovado: cenario.aprovado !== false, admin: false,
                  sexo: null, data_nascimento: null, altura_cm: null, nivel_atividade: null, objetivo_kg_semana: null }],
-    pesos: [], registos: [], alimentos: cenario.alimentos || [], alimentos_meus: [],
+    pesos: [], registos: cenario.registos || [], alimentos: cenario.alimentos || [], alimentos_meus: [],
+    receitas: cenario.receitas || [], receita_ingredientes: cenario.receita_ingredientes || [],
   };
   window.__BD__ = bd;
   window.__PEDIDOS__ = [];
@@ -24,7 +27,7 @@
   function construtor(tabela) {
     const q = { tabela, modo: 'select', filtros: [], ordem: null, limite: null, um: false, corpo: null, opcoes: {} };
     const api = {
-      select() { if (q.modo === 'select') q.modo = 'select'; return api; },
+      select() { if (q.modo !== 'select') q.devolver = true; return api; },
       insert(c) { q.modo = 'insert'; q.corpo = c; return api; },
       update(c) { q.modo = 'update'; q.corpo = c; return api; },
       upsert(c, o) { q.modo = 'upsert'; q.corpo = c; q.opcoes = o || {}; return api; },
@@ -60,18 +63,30 @@
     if (q.modo === 'insert') {
       if (t === 'profiles' || t === 'alimentos') return erro('42501', 'permission denied for table ' + t);
       const linhas = Array.isArray(q.corpo) ? q.corpo : [q.corpo];
+      const novas = [];
       for (const l of linhas) {
         const dono = l.utilizador_id ?? EU;
         if (dono !== EU) return erro('42501', 'new row violates row-level security policy');
-        bd[t].push({ id: id(), criado_em: new Date().toISOString(), ...l, utilizador_id: dono });
+        // Como a política verdadeira: o ingrediente só entra numa receita minha.
+        if (t === 'receita_ingredientes' && !bd.receitas.some(r => r.id === l.receita_id && r.utilizador_id === EU))
+          return erro('42501', 'new row violates row-level security policy for table "receita_ingredientes"');
+        if (t === 'receitas' && bd.receitas.some(r => r.utilizador_id === EU && r.nome === l.nome))
+          return erro('23505', 'duplicate key value violates unique constraint "receitas_nome_unico"');
+        const linha = { id: id(), criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString(), ...l, utilizador_id: dono };
+        bd[t].push(linha); novas.push(linha);
       }
+      if (q.devolver) return { data: q.um ? novas[0] : novas, error: null };
       return { data: null, error: null };
     }
     if (q.modo === 'update' || q.modo === 'upsert') {
       const cols = Object.keys(q.corpo);
       const proibidas = cols.filter(c => !(PODE_ALTERAR[t] || []).includes(c));
       if (proibidas.length) return erro('42501', 'permission denied for table ' + t + ' (colunas: ' + proibidas.join(', ') + ')');
-      if (q.modo === 'update') { meus(t).filter(filtra).forEach(r => Object.assign(r, q.corpo)); return { data: null, error: null }; }
+      if (q.modo === 'update') {
+        if (t === 'receitas' && q.corpo.nome && bd.receitas.some(r => r.utilizador_id === EU && r.nome === q.corpo.nome && !filtra(r)))
+          return erro('23505', 'duplicate key value violates unique constraint "receitas_nome_unico"');
+        meus(t).filter(filtra).forEach(r => Object.assign(r, q.corpo)); return { data: null, error: null };
+      }
       const chave = (q.opcoes.onConflict || 'id').split(',');
       const linha = { utilizador_id: EU, ...q.corpo };
       const existe = meus(t).find(r => chave.every(k => String(r[k]) === String(linha[k])));
@@ -79,8 +94,10 @@
       return { data: null, error: null };
     }
     if (q.modo === 'delete') {
-      const fica = (bd[t] || []).filter(r => !(meus(t).includes(r) && filtra(r)));
+      const sai = (bd[t] || []).filter(r => meus(t).includes(r) && filtra(r));
+      const fica = (bd[t] || []).filter(r => !sai.includes(r));
       bd[t].length = 0; bd[t].push(...fica);
+      if (t === 'receitas') { const ids = new Set(sai.map(r => r.id)); const f2 = bd.receita_ingredientes.filter(i => !ids.has(i.receita_id)); bd.receita_ingredientes.length = 0; bd.receita_ingredientes.push(...f2); }
       return { data: null, error: null };
     }
   }
@@ -101,6 +118,15 @@
         dias.push({ data: d, kcal, completo: false });
       }
       return { data: dias, error: null };
+    }
+    if (nome === 'receitas_resumo') {
+      return { data: bd.receitas.filter(r => r.utilizador_id === EU).map(r => {
+        const ing = bd.receita_ingredientes.filter(i => i.receita_id === r.id);
+        const tot = ing.reduce((s, i) => s + Number(i.kcal_100) * Number(i.gramas) / 100, 0);
+        return { id: r.id, nome: r.nome, porcoes: r.porcoes, peso_final_g: r.peso_final_g ?? null, ingredientes: ing.length,
+                 gramas_total: ing.reduce((s, i) => s + Number(i.gramas), 0), kcal_total: Math.round(tot),
+                 kcal_porcao: Math.round(tot / Number(r.porcoes)), kcal_100_final: r.peso_final_g ? Math.round(tot * 1000 / r.peso_final_g) / 10 : null };
+      }), error: null };
     }
     if (nome === 'procurar_alimento') {
       const t = String(args?.p_texto || '').toLowerCase();
