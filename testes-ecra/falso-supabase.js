@@ -169,6 +169,11 @@
             window.__PEDIDOS__.push({ funcao: nome, corpo });
             const off = cenario.off || {};
             const falha = (status, obj) => ({ data: null, error: { name: 'FunctionsHttpError', context: new Response(JSON.stringify(obj), { status }) } });
+            if (nome === 'receitas-ia') {
+              const ia = cenario.ia || {};
+              if (ia.estado) return falha(ia.estado, { erro: ia.erro || 'erro', desligado: !!ia.desligado });
+              return { data: { receitas: ia.receitas || [], aviso_custo: !!ia.aviso_custo }, error: null };
+            }
             if (nome !== 'alimentos') return falha(404, { erro: 'sem função' });
             if (off.estado) return falha(off.estado, { erro: off.erro || 'erro' });
             if (corpo.acao === 'procurar') return { data: { candidatos: off.candidatos || [] }, error: null };

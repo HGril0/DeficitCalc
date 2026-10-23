@@ -5,24 +5,38 @@
    O acento NÃO é o mesmo nos dois modos: o tom que se lê bem sobre fundo
    escuro desaparece sobre branco. São duas variáveis, de propósito. */
 
+/* ---------- medidas ---------- */
+:root {
+  /* Altura da navegação presa ao fundo. O corpo usa-a para guardar espaço;
+     se mudares o tamanho da barra, muda aqui também. */
+  --altura-nav: 69px;
+}
+
 /* ---------- modo claro (predefinição) ---------- */
 :root {
-  --fundo-base: #E6E8EB;
-  --fundo: radial-gradient(circle at 8% 6%,  rgba(140,168,196,0.85) 0, rgba(140,168,196,0) 46%),
-           radial-gradient(circle at 96% 36%, rgba(150,184,170,0.75) 0, rgba(150,184,170,0) 42%),
-           radial-gradient(circle at 12% 84%, rgba(168,160,196,0.60) 0, rgba(168,160,196,0) 46%),
-           radial-gradient(circle at 92% 96%, rgba(212,180,148,0.65) 0, rgba(212,180,148,0) 40%),
+  --fundo-base: #EDEFF2;
+  --fundo: radial-gradient(circle at 8% 6%,  rgba(140,168,196,0.62) 0, rgba(140,168,196,0) 46%),
+           radial-gradient(circle at 96% 36%, rgba(150,184,170,0.52) 0, rgba(150,184,170,0) 42%),
+           radial-gradient(circle at 12% 84%, rgba(168,160,196,0.44) 0, rgba(168,160,196,0) 46%),
+           radial-gradient(circle at 92% 96%, rgba(212,180,148,0.46) 0, rgba(212,180,148,0) 40%),
            var(--fundo-base);
 
   --texto: #121620;
   --fraco: #47505E;
 
-  --vidro: rgba(255,255,255,0.50);
-  --vidro-leve: rgba(255,255,255,0.44);
+  /* Duas camadas, de propósito (é a regra da Apple para o vidro líquido): o
+     vidro é da camada que FLUTUA — navegação, cabeçalho, folha. O conteúdo
+     usa uma superfície mais sólida. Vidro sobre vidro tira a profundidade. */
+  --vidro: rgba(255,255,255,0.62);
+  --vidro-leve: rgba(255,255,255,0.74);
+  --superficie: rgba(255,255,255,0.86);
+  --superficie-borda: rgba(255,255,255,0.95);
   --vidro-borda: rgba(255,255,255,0.75);
   --vidro-borda-leve: rgba(255,255,255,0.70);
   --realce: rgba(255,255,255,0.90);
-  --sombra: 0 12px 32px rgba(30,40,60,0.10);
+  --brilho: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.25) 42%, rgba(255,255,255,0) 72%);
+  --sombra: 0 1px 2px rgba(30,40,60,0.05), 0 10px 26px rgba(30,40,60,0.09);
+  --sombra-flutua: 0 2px 10px rgba(30,40,60,0.10), 0 18px 44px rgba(30,40,60,0.18);
   --divisoria: rgba(18,22,32,0.08);
   --tracejado: rgba(18,22,32,0.55);
 
@@ -37,8 +51,10 @@
   --hoje-contorno: 1.5px dashed #1D5C73;
 
   --veu: rgba(40,50,70,0.35);
+  --veu-fundo: linear-gradient(180deg, rgba(237,239,242,0) 0%, rgba(237,239,242,0.72) 45%, rgba(237,239,242,0.92) 100%);
   --folha: rgba(255,255,255,0.82);
   --campo: rgba(255,255,255,0.65);
+  --cartao-dentro: rgba(255,255,255,0.80);
   --puxador: rgba(18,22,32,0.25);
   --erro: #A33124;
   --erro-fundo: rgba(163,49,36,0.10);
@@ -57,12 +73,16 @@
     --texto: #F2F4F7;
     --fraco: rgba(235,240,245,0.74);
 
-    --vidro: rgba(11,14,22,0.68);
-    --vidro-leve: rgba(11,14,22,0.58);
+    --vidro: rgba(11,14,22,0.62);
+    --vidro-leve: rgba(26,30,41,0.72);
+    --superficie: rgba(26,30,41,0.82);
+    --superficie-borda: rgba(255,255,255,0.10);
+    --brilho: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0) 72%);
+    --sombra-flutua: 0 2px 10px rgba(0,0,0,0.30), 0 18px 44px rgba(0,0,0,0.50);
     --vidro-borda: rgba(255,255,255,0.14);
     --vidro-borda-leve: rgba(255,255,255,0.13);
     --realce: rgba(255,255,255,0.18);
-    --sombra: 0 12px 32px rgba(0,0,0,0.35);
+    --sombra: 0 1px 2px rgba(0,0,0,0.20), 0 10px 26px rgba(0,0,0,0.30);
     --divisoria: rgba(255,255,255,0.09);
     --tracejado: rgba(242,244,247,0.50);
 
@@ -77,8 +97,10 @@
     --hoje-contorno: 1.5px dashed #8FD3D8;
 
     --veu: rgba(2,3,7,0.62);
+  --veu-fundo: linear-gradient(180deg, rgba(4,6,10,0) 0%, rgba(4,6,10,0.74) 45%, rgba(4,6,10,0.94) 100%);
     --folha: rgba(8,10,17,0.92);
     --campo: rgba(255,255,255,0.06);
+  --cartao-dentro: rgba(255,255,255,0.05);
     --puxador: rgba(255,255,255,0.30);
     --erro: #F0A090;
     --erro-fundo: rgba(240,160,144,0.12);
@@ -95,12 +117,16 @@
            var(--fundo-base);
   --texto: #F2F4F7;
   --fraco: rgba(235,240,245,0.74);
-  --vidro: rgba(11,14,22,0.68);
-  --vidro-leve: rgba(11,14,22,0.58);
+  --vidro: rgba(11,14,22,0.62);
+  --vidro-leve: rgba(26,30,41,0.72);
+  --superficie: rgba(26,30,41,0.82);
+  --superficie-borda: rgba(255,255,255,0.10);
+  --brilho: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0) 72%);
+  --sombra-flutua: 0 2px 10px rgba(0,0,0,0.30), 0 18px 44px rgba(0,0,0,0.50);
   --vidro-borda: rgba(255,255,255,0.14);
   --vidro-borda-leve: rgba(255,255,255,0.13);
   --realce: rgba(255,255,255,0.18);
-  --sombra: 0 12px 32px rgba(0,0,0,0.35);
+  --sombra: 0 1px 2px rgba(0,0,0,0.20), 0 10px 26px rgba(0,0,0,0.30);
   --divisoria: rgba(255,255,255,0.09);
   --tracejado: rgba(242,244,247,0.50);
   --acento: #8FD3D8;
@@ -112,8 +138,10 @@
   --hoje-fundo: rgba(143,211,216,0.14);
   --hoje-contorno: 1.5px dashed #8FD3D8;
   --veu: rgba(2,3,7,0.62);
+  --veu-fundo: linear-gradient(180deg, rgba(4,6,10,0) 0%, rgba(4,6,10,0.74) 45%, rgba(4,6,10,0.94) 100%);
   --folha: rgba(8,10,17,0.92);
   --campo: rgba(255,255,255,0.06);
+  --cartao-dentro: rgba(255,255,255,0.05);
   --puxador: rgba(255,255,255,0.30);
   --erro: #F0A090;
   --erro-fundo: rgba(240,160,144,0.12);
@@ -131,7 +159,10 @@ body {
   background-attachment: fixed;
   color: var(--texto);
   font: 16px/1.5 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px);
+  /* O fundo guarda espaço para a navegação, que agora flutua por cima: sem
+     isto, o último cartão ficava escondido debaixo dela. */
+  padding: calc(env(safe-area-inset-top) + 18px) 16px
+           calc(env(safe-area-inset-bottom) + var(--altura-nav, 0px) + 22px);
   max-width: 460px;
   margin-inline: auto;
   transition: background-color .35s ease, color .35s ease;
@@ -163,18 +194,42 @@ button, a.botao, .linha-toque { min-height: 44px; }
 
 /* ---------- vidro ---------- */
 .vidro, .vidro-leve {
-  border-radius: 24px;
-  border: 1px solid var(--vidro-borda);
-  -webkit-backdrop-filter: blur(26px) saturate(140%);
-  backdrop-filter: blur(26px) saturate(140%);
+  border-radius: 26px;
+  border: 1px solid var(--superficie-borda);
+  background: var(--superficie);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  backdrop-filter: blur(14px) saturate(125%);
   box-shadow: inset 0 1px 0 var(--realce), var(--sombra);
   transition: background-color .35s ease, border-color .35s ease;
 }
-.vidro { background: var(--vidro); }
 .vidro-leve { background: var(--vidro-leve); border-color: var(--vidro-borda-leve); }
 
-.toque { transition: transform .13s ease, background-color .25s ease, border-color .25s ease; }
-.toque:active { transform: scale(0.975); }
+/* A camada que flutua por cima do conteúdo: é aqui que o vidro é a sério.
+   Mais desfoque, e um brilho no topo que imita a luz a bater no vidro. */
+.flutua {
+  position: relative;
+  background: var(--vidro);
+  border: 1px solid var(--vidro-borda);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--realce), var(--sombra-flutua);
+}
+.flutua::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--brilho);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.toque { transition: transform .16s cubic-bezier(.2,.9,.25,1), background-color .25s ease, border-color .25s ease; }
+.toque:active { transform: scale(0.96); }
 
 :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
@@ -192,6 +247,7 @@ button, a.botao, .linha-toque { min-height: 44px; }
   width: 40px; height: 40px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
   background: var(--vidro);
   border: 1px solid var(--vidro-borda);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
@@ -211,47 +267,70 @@ button, a.botao, .linha-toque { min-height: 44px; }
 }
 
 /* ---------- navegação ---------- */
+/* O conteúdo esbate-se por trás da navegação. Sem isto, lia-se o texto da
+   página através do vidro e ficava tudo confuso — é o que a Apple chama
+   "vidro sobre um fundo ocupado". */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: calc(env(safe-area-inset-bottom) + var(--altura-nav) + 26px);
+  background: var(--veu-fundo);
+  pointer-events: none;
+  z-index: 8;
+}
+
+/* Presa ao fundo do ecrã, não ao fim do conteúdo: está sempre à mão, mesmo
+   numa página comprida. A cápsula é a forma por omissão do vidro líquido. */
 .nav {
+  position: fixed;
+  left: 16px; right: 16px;
+  bottom: calc(env(safe-area-inset-bottom) + 10px);
+  z-index: 9;
   display: flex;
+  gap: 4px;
   padding: 6px;
-  border-radius: 28px;
-  margin-top: 16px;
+  border-radius: 999px;
+  max-width: 428px;
+  margin-inline: auto;
 }
 .nav a {
   flex: 1;
   text-align: center;
   padding: 11px 0;
-  border-radius: 22px;
+  border-radius: 999px;
   font-size: 13px;
   color: var(--fraco);
   display: flex; align-items: center; justify-content: center;
+  transition: background-color .22s ease, color .22s ease;
 }
 .nav a[aria-current="page"] {
   background: var(--acento-suave);
   color: var(--acento-texto);
   font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--realce);
 }
 
 /* ---------- formulário ---------- */
 label { display: block; font-size: 13px; color: var(--fraco); margin: 14px 0 6px; }
 label:first-child { margin-top: 0; }
 
-input, select {
+input, select, textarea {
   width: 100%;
   font: inherit;
   color: var(--texto);
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--vidro-borda-leve);
   background: var(--campo);
 }
-input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
 
 .principal {
   width: 100%;
   font-weight: 600;
   padding: 15px;
-  border-radius: 16px;
+  border-radius: 999px;
   background: var(--acento-suave);
   border: 1px solid var(--acento);
   color: var(--acento-texto);
@@ -295,6 +374,26 @@ input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1
 @keyframes subir { from { transform: translateY(102%); } to { transform: translateY(0); } }
 @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
 
+/* ---------- acessibilidade ---------- */
+/* Quem pede menos transparência no iPhone (Definições → Acessibilidade →
+   Ecrã) quer ver o texto, não o fundo: o vidro passa a superfície opaca. */
+@media (prefers-reduced-transparency: reduce) {
+  .vidro, .vidro-leve, .flutua, .folha, .redondo {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--fundo-base);
+  }
+  .flutua::before { display: none; }
+}
+
+/* Mais contraste: contornos a sério em vez de bordas sugeridas. */
+@media (prefers-contrast: more) {
+  .vidro, .vidro-leve, .flutua, .folha, input, select, textarea, .chip, .secundario {
+    border-color: var(--texto);
+  }
+  .nav a[aria-current="page"] { outline: 1px solid var(--acento); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .folha, .veu { animation: none; }
   .toque:active { transform: none; }
@@ -326,7 +425,7 @@ input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1
 .res-kcal small { font-size: 11px; color: var(--fraco); font-family: 'IBM Plex Sans', sans-serif; }
 .nota-fonte { font-size: 12.5px; line-height: 1.45; color: var(--fraco); margin: 8px 0 0;
               border-left: 3px solid var(--acento); padding-left: 10px; }
-.secundario { width: 100%; margin-top: 10px; padding: 12px; border-radius: 14px; font-size: 14px; font-weight: 500;
+.secundario { width: 100%; margin-top: 10px; padding: 12px; border-radius: 999px; font-size: 14px; font-weight: 500;
               border: 1px solid var(--vidro-borda-leve); background: var(--campo); color: var(--acento-texto); }
 .linha-codigo { align-items: flex-end; margin-top: 4px; }
 .linha-codigo .secundario { width: auto; flex: 0 0 auto; padding: 12px 18px; margin: 0 0 2px; }

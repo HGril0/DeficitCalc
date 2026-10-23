@@ -10,6 +10,7 @@ const hojeISO = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe
 const arred1 = (v) => Math.round(v * 10) / 10;
 
 let supabase, receita = null, ingredientes = [], modoGramas = false, aApagar = false, pesquisa = null;
+let sugestaoAberta = null;
 
 function aviso(texto, tipo) {
   const m = $('msg');
@@ -51,6 +52,7 @@ async function carregarLista() {
 // ------------------------------------------------------------------ editor
 function mostrarEditor(sim) {
   $('lista').classList.toggle('oculto', sim);
+  $('caixa-ia').classList.toggle('oculto', sim);
   $('editor').classList.toggle('oculto', !sim);
   $('voltar').classList.toggle('oculto', !sim);
   $('titulo').textContent = sim ? (receita ? receita.nome : 'Nova receita') : 'Receitas';
@@ -121,6 +123,17 @@ async function guardar() {
   if (!(porcoes > 0 && porcoes <= 100)) throw new Error('As porções têm de estar entre 0,5 e 100.');
   if (peso !== null && !(peso > 0 && peso <= 50000)) throw new Error('O peso final tem de estar entre 1 g e 50 kg.');
   const campos = { nome, porcoes, peso_final_g: peso };
+  // Receita nascida de uma sugestão: os passos ficam nas notas, para os teres
+  // à mão enquanto cozinhas e juntas os ingredientes.
+  if (!receita && sugestaoAberta && sugestaoAberta.nome === nome) {
+    campos.notas = [
+      sugestaoAberta.descricao,
+      '',
+      'Sugestão da IA — ingredientes: ' + sugestaoAberta.ingredientes.map((i) => `${i.nome} ${i.gramas} g`).join(', '),
+      '',
+      ...sugestaoAberta.passos.map((p, n) => `${n + 1}. ${p}`),
+    ].join('\n').slice(0, 2000);
+  }
   if (!receita) {
     const { data, error } = await supabase.from('receitas').insert(campos).select('id, nome, porcoes, peso_final_g').single();
     if (error) throw new Error(error.code === '23505' ? 'Já tens uma receita com esse nome.' : textoErro(error));
@@ -222,6 +235,75 @@ async function registar() {
   aviso(`Registado no ${NOMES[refeicao]} de hoje: ${c.kcal} kcal.`, 'bom');
 }
 
+// ------------------------------------------------------------------ IA
+// A resposta vem de fora e é texto gerado: entra no ecrã só como textContent,
+// nunca como HTML. As calorias NÃO vêm daqui — a sugestão dá a ideia do
+// prato, e os ingredientes a sério juntam-se a seguir, pela pesquisa.
+function desenharSugestoes(receitas) {
+  const raiz = $('ia-sugestoes');
+  raiz.replaceChildren();
+  for (const r of receitas) {
+    const cartao = el('article', 'ia-receita');
+    cartao.append(el('h3', null, r.nome), el('p', 'desc', r.descricao));
+
+    const ul = el('ul', 'ia-ing');
+    for (const i of r.ingredientes) ul.append(el('li', null, `${i.nome} · ${i.gramas} g`));
+    cartao.append(ul);
+
+    const ol = el('ol', 'ia-passos');
+    for (const p of r.passos) ol.append(el('li', null, p));
+    cartao.append(ol);
+
+    const b = el('button', 'secundario toque', 'Criar receita com esta ideia');
+    b.type = 'button';
+    b.addEventListener('click', () => criarDaSugestao(r).catch((e) => aviso(e && e.message ? e.message : textoErro(e), 'erro')));
+    cartao.append(b);
+    raiz.append(cartao);
+  }
+  const nota = el('p', 'ia-nota',
+    'Sugestões de uma IA: servem de ideia, não de receita testada. Confirma as quantidades e usa o teu bom senso com alergias e prazos de validade.');
+  raiz.append(nota);
+}
+
+// Cria a receita com o nome e as porções da sugestão, e guarda os passos nas
+// notas. Os ingredientes ficam de fora de propósito: entram pela pesquisa,
+// com os valores do INSA, para as calorias não serem um palpite.
+async function criarDaSugestao(r) {
+  await abrir(null);
+  $('r-nome').value = r.nome;
+  $('r-porcoes').value = String(r.porcoes);
+  sugestaoAberta = r;
+  await guardar();
+  aviso('Receita criada com a ideia da IA. Agora junta os ingredientes a sério — é daí que vêm as calorias.', 'bom');
+}
+
+async function pedirSugestoes() {
+  const texto = $('ia-texto').value.trim();
+  if (texto.length < 3) { aviso('Escreve o que tens em casa, nem que sejam duas ou três coisas.', 'erro'); return; }
+  const b = $('ia-pedir');
+  b.disabled = true;
+  b.textContent = 'A pensar…';
+  try {
+    const { data, error } = await supabase.functions.invoke('receitas-ia', { body: { acao: 'sugerir', ingredientes: texto } });
+    if (error) {
+      let msg = 'Não foi possível pedir sugestões. Verifica a ligação.';
+      try { const j = await error.context.json(); if (j && typeof j.erro === 'string') msg = j.erro; } catch (_) {}
+      aviso(msg, 'erro');
+      return;
+    }
+    if (!data || !Array.isArray(data.receitas) || !data.receitas.length) {
+      aviso('Não me ocorreu nada com esses ingredientes. Tenta acrescentar mais algum.', 'erro');
+      return;
+    }
+    aviso('', '');
+    desenharSugestoes(data.receitas);
+    if (data.aviso_custo) aviso('Nota: as sugestões por IA já gastaram 80% do limite deste mês.', 'bom');
+  } finally {
+    b.disabled = false;
+    b.textContent = 'Sugerir receitas';
+  }
+}
+
 // ------------------------------------------------------------------ arranque
 async function principal() {
   const ctx = await exigirSessao();
@@ -236,8 +318,9 @@ async function principal() {
   });
 
   const seguro = (f) => () => f().catch((e) => aviso(e && e.message ? e.message : textoErro(e), 'erro'));
-  $('nova').addEventListener('click', seguro(() => abrir(null)));
-  $('voltar').addEventListener('click', seguro(async () => { receita = null; aviso('', ''); mostrarEditor(false); await carregarLista(); }));
+  $('nova').addEventListener('click', seguro(() => { sugestaoAberta = null; return abrir(null); }));
+  $('ia-pedir').addEventListener('click', seguro(pedirSugestoes));
+  $('voltar').addEventListener('click', seguro(async () => { receita = null; sugestaoAberta = null; aviso('', ''); mostrarEditor(false); await carregarLista(); }));
   $('r-guardar').addEventListener('click', seguro(guardar));
   $('r-apagar').addEventListener('click', seguro(apagarReceita));
   $('r-registar').addEventListener('click', seguro(registar));

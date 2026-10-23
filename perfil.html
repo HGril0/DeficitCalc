@@ -30,8 +30,8 @@
   .nota { font-size: 13px; color: var(--fraco); margin-top: 12px; line-height: 1.5; }
   .nota.ajuste { border-left: 3px solid var(--barra-alta-texto); padding-left: 11px; color: var(--texto); }
   .vazio { color: var(--fraco); font-size: 14px; text-align: center; padding: 12px 0; }
-  .radios { display: flex; gap: 8px; }
-  .radios button { flex: 1; padding: 12px; border-radius: 14px; border: 1px solid var(--vidro-borda-leve);
+  .radios { display: flex; gap: 8px; margin-bottom: 4px; }
+  .radios button { flex: 1; padding: 12px; border-radius: 999px; border: 1px solid var(--vidro-borda-leve);
                    background: var(--campo); color: var(--fraco); font-weight: 600; }
   .radios button[aria-pressed="true"] { background: var(--acento-suave); color: var(--acento-texto); border-color: var(--acento); }
   .dupla { display: flex; gap: 10px; }
@@ -42,12 +42,12 @@
 
 <div class="topo">
   <div style="display:flex;align-items:center;gap:12px">
-    <a href="hoje.html" class="redondo toque" aria-label="Voltar">
+    <a href="hoje.html" class="redondo flutua toque" aria-label="Voltar">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
     </a>
     <h1>Perfil e objetivo</h1>
   </div>
-  <button class="redondo toque" id="btn-tema"></button>
+  <button class="redondo flutua toque" id="btn-tema"></button>
 </div>
 
 <div id="msg" class="aviso oculto"></div>
@@ -117,7 +117,7 @@
   <p>Produtos com código de barras: Open Food Facts, base de dados aberta escrita por voluntários (licença ODbL).</p>
 </section>
 
-<nav class="vidro nav">
+<nav class="vidro flutua nav">
   <a href="hoje.html">Hoje</a>
   <a href="receitas.html">Receitas</a>
   <a href="perfil.html" aria-current="page">Perfil</a>

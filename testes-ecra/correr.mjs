@@ -392,6 +392,66 @@ const FONTE = 'Fonte: Base de Dados da Composição de Alimentos. Instituto Naci
   T('E27 o perfil mostra a fonte do INSA', (await a.page.textContent('#fontes-dados')).includes(FONTE) && await a.page.locator('#fontes-dados').isVisible());
   await limpo('E27', a); await a.ctx.close(); }
 
+// ---------------------------------------------------------------- IA das receitas
+const SUG = [
+  { nome: 'Arroz de frango com pimento', descricao: 'Um tacho só, pronto em meia hora.', porcoes: 4,
+    ingredientes: [{ nome: 'Frango, peito sem pele, cru', gramas: 600 }, { nome: 'Arroz agulha cru', gramas: 300 }, { nome: 'Cebola crua', gramas: 120 }],
+    passos: ['Refoga a cebola no azeite.', 'Junta o frango aos cubos e deixa alourar.', 'Acrescenta o arroz e o dobro de água.'] },
+  { nome: 'Canja de frango', descricao: 'Para aproveitar a carcaça.', porcoes: 6,
+    ingredientes: [{ nome: 'Frango, perna sem pele, crua', gramas: 400 }, { nome: 'Massa miúda crua', gramas: 100 }],
+    passos: ['Coze o frango em água com sal.', 'Junta a massa e deixa 8 minutos.'] },
+];
+
+// E28 a caixa pede, mostra e explica de onde vêm as calorias
+{ const a = await abrir('receitas.html', { alimentos: GORD, ia: { receitas: SUG } });
+  T('E28 a caixa da IA aparece na lista', await a.page.locator('#caixa-ia').isVisible());
+  await a.page.click('#ia-pedir'); await a.page.waitForTimeout(300);
+  T('E28 sem ingredientes não chama o servidor', (await a.page.textContent('#msg')).includes('o que tens em casa')
+    && (await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.funcao === 'receitas-ia').length)) === 0);
+  await a.page.fill('#ia-texto', 'frango, arroz, cebola');
+  await a.page.click('#ia-pedir'); await a.page.waitForTimeout(600);
+  const env = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.funcao === 'receitas-ia').pop().corpo);
+  T('E28 envia a ação e os ingredientes, e mais nada', env.acao === 'sugerir' && env.ingredientes === 'frango, arroz, cebola' && Object.keys(env).length === 2, JSON.stringify(env));
+  const txt = await a.page.textContent('#ia-sugestoes');
+  T('E28 mostra as duas sugestões com ingredientes e passos', (await a.page.locator('.ia-receita').count()) === 2
+    && txt.includes('Arroz de frango com pimento') && txt.includes('Arroz agulha cru · 300 g') && txt.includes('Refoga a cebola'), txt.slice(0, 120));
+  T('E28 avisa que é uma IA e não uma receita testada', txt.includes('não de receita testada'));
+  T('E28 não mostra calorias nas sugestões', !/\d+\s*kcal/.test(txt), txt.slice(0, 80));
+  await limpo('E28', a); await a.ctx.close(); }
+
+// E29 criar a receita a partir da sugestão
+{ const a = await abrir('receitas.html', { alimentos: GORD, ia: { receitas: SUG } });
+  await a.page.fill('#ia-texto', 'frango, arroz, cebola');
+  await a.page.click('#ia-pedir'); await a.page.waitForTimeout(600);
+  await a.page.locator('.ia-receita button').first().click(); await a.page.waitForTimeout(700);
+  const ins = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'receitas' && p.modo === 'insert').pop().corpo);
+  T('E29 cria a receita com o nome e as porções da sugestão', ins.nome === 'Arroz de frango com pimento' && Number(ins.porcoes) === 4 && !('utilizador_id' in ins), JSON.stringify(ins).slice(0, 110));
+  T('E29 os passos ficam nas notas', typeof ins.notas === 'string' && ins.notas.includes('1. Refoga a cebola') && ins.notas.includes('Arroz agulha cru 300 g'));
+  T('E29 NÃO cria ingredientes a partir da IA (as calorias vêm do INSA)',
+    (await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'receita_ingredientes' && p.modo === 'insert').length)) === 0);
+  T('E29 abre o editor e explica o passo seguinte', await a.page.locator('#editor').isVisible()
+    && (await a.page.textContent('#msg')).includes('ingredientes a sério'), await a.page.textContent('#msg'));
+  T('E29 a caixa da IA sai da frente enquanto editas', await a.page.locator('#caixa-ia').isHidden());
+  await limpo('E29', a); await a.ctx.close(); }
+
+// E30 erros do servidor chegam em português, sem detalhe técnico
+{ const a = await abrir('receitas.html', { alimentos: GORD, ia: { estado: 429, erro: 'As sugestões por IA chegaram ao limite de gastos deste mês. Voltam no dia 1.' } });
+  await a.page.fill('#ia-texto', 'frango, arroz');
+  await a.page.click('#ia-pedir'); await a.page.waitForTimeout(600);
+  T('E30 o limite de gastos é explicado tal como vem', (await a.page.textContent('#msg')).includes('limite de gastos deste mês'), await a.page.textContent('#msg'));
+  T('E30 o botão volta ao normal depois do erro', (await a.page.textContent('#ia-pedir')) === 'Sugerir receitas' && !(await a.page.locator('#ia-pedir').isDisabled()));
+  await limpo('E30', a); await a.ctx.close(); }
+
+// E31 texto malicioso numa sugestão não vira HTML
+{ const MAU = '<img src=x onerror="window.__XSS__=1">Caldo';
+  const a = await abrir('receitas.html', { alimentos: GORD, ia: { receitas: [
+    { nome: MAU, descricao: MAU, porcoes: 2, ingredientes: [{ nome: MAU, gramas: 100 }, { nome: 'Água', gramas: 500 }], passos: [MAU] }] } });
+  await a.page.fill('#ia-texto', 'o que houver');
+  await a.page.click('#ia-pedir'); await a.page.waitForTimeout(600);
+  T('E31 o nome aparece como texto', (await a.page.textContent('#ia-sugestoes')).includes('<img src=x') && (await a.page.locator('#ia-sugestoes img').count()) === 0);
+  T('E31 e o código não correu', await a.page.evaluate(() => window.__XSS__ === undefined));
+  await limpo('E31', a); await a.ctx.close(); }
+
 await browser.close(); srv.kill();
 let falhas = 0;
 for (const r of resultados) { if (!r.ok) falhas++; console.log((r.ok ? 'PASSA' : '>>> FALHA') + ' | ' + r.nome + (r.ok || !r.obs ? '' : ' | ' + r.obs)); }

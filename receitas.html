@@ -42,6 +42,21 @@
   .titulo-secao { font-size: 13px; font-weight: 600; margin: 18px 0 4px; color: var(--fraco); text-transform: uppercase; letter-spacing: .04em; }
   .registar-total { font-size: 34px; text-align: right; }
   .registar-total small { font-size: 13px; color: var(--fraco); font-family: 'IBM Plex Sans', sans-serif; }
+  /* caixa da IA */
+  .ia-titulo { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .ia-selo { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .06em;
+             padding: 3px 7px; border-radius: 999px; background: var(--acento-suave); color: var(--acento-texto); }
+  .ia-ajuda { font-size: 12.5px; color: var(--fraco); margin: 0 0 10px; line-height: 1.45; }
+  #ia-texto { min-height: 76px; resize: vertical; }
+  .ia-sugestoes { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .ia-receita { border: 1px solid var(--divisoria); border-radius: 18px; padding: 15px 16px; background: var(--cartao-dentro); }
+  .ia-receita h3 { font-size: 16px; margin: 0 0 3px; font-weight: 600; }
+  .ia-receita .desc { font-size: 13px; color: var(--fraco); margin: 0 0 10px; line-height: 1.45; }
+  .ia-ing { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .ia-ing li { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: var(--acento-suave); color: var(--acento-texto); }
+  .ia-passos { margin: 0 0 12px; padding-left: 18px; font-size: 13px; color: var(--fraco); line-height: 1.55; }
+  .ia-passos li + li { margin-top: 3px; }
+  .ia-nota { font-size: 11.5px; color: var(--fraco); margin-top: 10px; line-height: 1.45; }
   .perigo { width: 100%; margin-top: 18px; padding: 12px; border-radius: 14px; font-size: 14px; background: none;
             border: 1px solid var(--vidro-borda-leve); color: var(--barra-alta-texto); }
 </style>
@@ -50,12 +65,12 @@
 
 <div class="topo">
   <div style="display:flex;align-items:center;gap:12px">
-    <button class="redondo toque oculto" id="voltar" aria-label="Voltar à lista">
+    <button class="redondo flutua toque oculto" id="voltar" aria-label="Voltar à lista">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
     <h1 id="titulo">Receitas</h1>
   </div>
-  <button class="redondo toque" id="btn-tema"></button>
+  <button class="redondo flutua toque" id="btn-tema"></button>
 </div>
 
 <div id="msg" class="aviso oculto"></div>
@@ -64,6 +79,15 @@
   <button type="button" class="principal toque" id="nova">Nova receita</button>
   <ul class="lista-receitas" id="receitas"></ul>
   <p class="vazio oculto" id="sem-receitas">Ainda não tens receitas. As que fazes muitas vezes são as que mais valem a pena: registas a receita uma vez e depois é só dizer quanto comeste.</p>
+</section>
+
+<section class="vidro cartao" id="caixa-ia">
+  <p class="ia-titulo">O que tens em casa? <span class="ia-selo">IA</span></p>
+  <p class="ia-ajuda">Escreve os ingredientes que tens e eu sugiro pratos que dê para fazer com eles. As calorias não vêm daqui: contam-se depois, com a tabela do INSA.</p>
+  <label for="ia-texto" class="oculto">Ingredientes que tens em casa</label>
+  <textarea id="ia-texto" maxlength="300" autocomplete="off" placeholder="frango, arroz, cebola, um pimento, meia lata de tomate"></textarea>
+  <button type="button" class="secundario toque" id="ia-pedir">Sugerir receitas</button>
+  <div class="ia-sugestoes" id="ia-sugestoes"></div>
 </section>
 
 <section class="vidro cartao oculto" id="editor">
@@ -118,7 +142,7 @@
   </div>
 </section>
 
-<nav class="vidro nav">
+<nav class="vidro flutua nav">
   <a href="hoje.html">Hoje</a>
   <a href="receitas.html" aria-current="page">Receitas</a>
   <a href="perfil.html">Perfil</a>

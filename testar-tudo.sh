@@ -37,6 +37,10 @@ passo "Função alimentos"
 node --experimental-strip-types --no-warnings supabase/functions/alimentos/teste.mjs 2>/dev/null | tail -1
 node --experimental-strip-types --no-warnings supabase/functions/alimentos/teste.mjs >/dev/null 2>&1 || falhou=1
 
+passo "Função receitas-ia"
+node --experimental-strip-types --no-warnings supabase/functions/receitas-ia/teste.mjs 2>/dev/null | tail -1
+node --experimental-strip-types --no-warnings supabase/functions/receitas-ia/teste.mjs >/dev/null 2>&1 || falhou=1
+
 passo "Ecrã (Chromium com a CSP e os cabeçalhos reais)"
 node testes-ecra/correr.mjs > /tmp/ecra.log 2>&1 || falhou=1
 grep -E ">>> FALHA|TOTAL" /tmp/ecra.log
