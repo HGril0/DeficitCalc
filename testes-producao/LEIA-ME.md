@@ -9,8 +9,12 @@ verdadeira. Correm no browser, na página da app, com sessão iniciada.
    `suite.js`. Corre `await suite()`.
 3. Corre `limpar.sql`. Deve devolver `restos = 0`.
 
-Resultado de 23/10/2026: 55/55 na base de dados, 14/14 na função
-`alimentos` (incluindo o limite de 30 pedidos por minuto).
+Resultado de 23/10/2026: 65/65 com este ficheiro exato (impressão SHA-256
+começada por 1b41f842), mais o limite de 30 pedidos por minuto à parte.
+
+Se a consola do browser não aceitar colar código, ou se o resultado não
+aparecer: o editor SQL do Supabase não desenha a grelha quando a janela está
+minimizada — os dados estão lá, a grelha é que não aparece.
 
 Os outros testes (`sql/testes/`, `testes-ecra/`,
 `supabase/functions/alimentos/teste.mjs`) correm sem tocar em produção.

@@ -10,6 +10,7 @@ async function suite() {
   const MREG = '7e570000-0000-0000-0000-00000000a001', MCAT = '7e570000-0000-0000-0000-00000000a003';
   async function req(metodo, caminho, corpo, { token = TOK, extra = {}, url = API + caminho } = {}) {
     const h = { apikey: KEY, 'Content-Type': 'application/json', Prefer: 'return=representation', ...extra };
+    for (const k of Object.keys(h)) if (h[k] === undefined) delete h[k];
     if (token) h.Authorization = 'Bearer ' + token;
     const r = await fetch(url, { method: metodo, headers: h, credentials: 'omit', body: corpo == null ? undefined : (typeof corpo === 'string' ? corpo : JSON.stringify(corpo)) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (_) {}
@@ -65,7 +66,9 @@ async function suite() {
   for (const f of ['estimar_gasto', 'dia', 'ultimos_dias', 'procurar_alimento', 'alimento_por_codigo', 'esta_aprovado'])
     await T(`A anónimo chama ${f}`, req('POST', `/rest/v1/rpc/${f}`, {}, { token: null }), negado);
   // função alimentos
-  const fn = (corpo, o = {}) => req('POST', '', corpo, { ...o, url: FN });
+  // Sem o cabeçalho Prefer: a função só autoriza os cabeçalhos que o
+  // supabase-js manda (apikey, authorization, content-type, x-client-info).
+  const fn = (corpo, o = {}) => req('POST', '', corpo, { ...o, url: FN, extra: { Prefer: undefined } });
   await T('E1 função sem sessão', fn({ acao: 'codigo', codigo: '3017620422003' }, { token: null }), (r) => r.s === 401);
   await T('E2 função só com a chave pública', fn({ acao: 'codigo', codigo: '3017620422003' }, { token: KEY }), (r) => r.s === 401);
   await T('E3 função com token adulterado', fn({ acao: 'codigo', codigo: '3017620422003' }, { token: `${h}.${enc({ ...pl, sub: OUTRO })}.${s}` }), (r) => r.s === 401);
