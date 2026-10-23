@@ -237,7 +237,7 @@ async function principal() {
 
   const seguro = (f) => () => f().catch((e) => aviso(e && e.message ? e.message : textoErro(e), 'erro'));
   $('nova').addEventListener('click', seguro(() => abrir(null)));
-  $('voltar').addEventListener('click', seguro(async () => { receita = null; mostrarEditor(false); await carregarLista(); }));
+  $('voltar').addEventListener('click', seguro(async () => { receita = null; aviso('', ''); mostrarEditor(false); await carregarLista(); }));
   $('r-guardar').addEventListener('click', seguro(guardar));
   $('r-apagar').addEventListener('click', seguro(apagarReceita));
   $('r-registar').addEventListener('click', seguro(registar));

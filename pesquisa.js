@@ -205,6 +205,8 @@ export function montarPesquisa({
           definirModo(false);
           quantidade.value = String(arred1(colheres.sopa * COLHER_SOPA_G + colheres.cha * COLHER_CHA_G) || '');
           atualizarTotal();
+          desenharAjuda();             // o contador e as pintas acompanham
+          ajuda.querySelector(`[aria-label="${d > 0 ? 'mais' : 'menos'} uma ${rotulo}"]`)?.focus();
         };
         menos.addEventListener('click', () => mudar(-1));
         mais.addEventListener('click', () => mudar(+1));

@@ -234,6 +234,8 @@ const GORD = [
   await a.page.getByRole('button', { name: 'mais uma Colher de sopa' }).click();
   T('E17 duas colheres de sopa = 27,4 g', (await a.page.inputValue('#quantidade')) === '27.4', await a.page.inputValue('#quantidade'));
   T('E17 e 242 kcal', (await a.page.textContent('#esc-kcal')) === '242', await a.page.textContent('#esc-kcal'));
+  T('E17 o contador mostra 2 e duas pintas cheias', (await a.page.textContent('[data-colher="sopa"]')) === '2'
+    && (await a.page.locator('.linha-colher').first().locator('.pinta.cheia').count()) === 2, await a.page.textContent('[data-colher="sopa"]'));
   await a.page.getByRole('button', { name: 'mais uma Colher de chá' }).click();
   T('E17 mais uma de chá = 32 g', (await a.page.inputValue('#quantidade')) === '32', await a.page.inputValue('#quantidade'));
   await limpo('E17', a); await a.ctx.close(); }
@@ -294,6 +296,7 @@ async function juntarIngrediente(a, texto, gramas) {
   T('E19 tirar o azeite deixa 700 kcal', (await a.page.textContent('#r-total')) === '700');
   // voltar à lista
   await a.page.click('#voltar'); await a.page.waitForTimeout(400);
+  T('E19 ao voltar à lista, a mensagem anterior desaparece', await a.page.locator('#msg').isHidden());
   T('E19 a lista mostra a receita e as kcal por porção', (await a.page.textContent('#receitas')).includes('Arroz de legumes') && (await a.page.textContent('#receitas')).includes('175'));
   await limpo('E19', a); await a.ctx.close(); }
 
