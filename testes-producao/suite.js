@@ -78,6 +78,22 @@ async function suite() {
   await T('E7 lê um código real', fn({ acao: 'codigo', codigo: '3017620422003' }), (r) => r.s === 200 && r.j?.alimento?.kcal_100 > 0);
   await T('E8 pesquisa por texto', fn({ acao: 'procurar', texto: 'iogurte natural' }), (r) => r.s === 200 && Array.isArray(r.j?.candidatos));
   await T('E9 operadores de pesquisa não rebentam nada', fn({ acao: 'procurar', texto: 'arroz OR *:*' }), (r) => r.s === 200);
+  // tabela do INSA (12-insa.sql e 13-insa-dados.sql)
+  const pa = (p_texto, extra = {}) => req('POST', '/rest/v1/rpc/procurar_alimento', { p_texto, ...extra });
+  await T('I1 "acucar" sem acento encontra o açúcar do INSA', pa('acucar'), (r) => r.s === 200 && (r.j || []).some((x) => x.nome === 'Açúcar branco' && x.fonte === 'insa'));
+  await T('I2 cerveja vem marcada por ml', pa('cerveja branca'), (r) => r.s === 200 && r.j?.[0]?.por_ml === true);
+  await T('I3 "arroz pato" encontra Arroz de pato', pa('arroz pato'), (r) => r.s === 200 && (r.j || []).some((x) => x.nome === 'Arroz de pato'));
+  await T('I4 pesquisa por palavras não mostra o alimento alheio', pa('seguranca marcador teste'), (r) => r.s === 200 && !r.t.includes('MARCADOR-TESTE-SEGURANCA'));
+  await T('I5 "%%" não é curinga', pa('%%'), vazio);
+  await T('I6 máximo 50 resultados', pa('a e', { p_limite: 999 }), (r) => r.s === 200 && r.j?.length === 50);
+  await T('I7 9 palavras não varrem o catálogo', pa('a b c d e f g h i'), vazio);
+  await T('I8 alterar valor do INSA', req('PATCH', '/rest/v1/alimentos?codigo_insa=eq.624', { kcal_100: 1 }), negado);
+  await T('I9 mudar por_ml', req('PATCH', '/rest/v1/alimentos?codigo_insa=eq.726', { por_ml: false }), negado);
+  await T('I10 inserir como se fosse do INSA', req('POST', '/rest/v1/alimentos', { nome: 'Veneno', kcal_100: 1, fonte: 'insa', codigo_insa: '99999' }), negado);
+  await T('I11 apagar o INSA', req('DELETE', '/rest/v1/alimentos?fonte=eq.insa'), negado);
+  await T('I12 o abacate continua com 176 kcal', req('GET', '/rest/v1/alimentos?codigo_insa=eq.624&select=kcal_100'), (r) => r.s === 200 && Number(r.j?.[0]?.kcal_100) === 176);
+  await T('I13 anónimo não lê o INSA', req('GET', '/rest/v1/alimentos?fonte=eq.insa&select=nome', null, { token: null }), negado);
+  await T('I14 anónimo não pesquisa', req('POST', '/rest/v1/rpc/procurar_alimento', { p_texto: 'arroz' }, { token: null }), negado);
   // uso legítimo
   let r = await T('G1 cria registo', req('POST', '/rest/v1/registos', { refeicao: 'lanche', descricao: 'TESTE-LEGITIMO', kcal: 42 }), (r) => r.s === 201 && r.t.includes(EU));
   const id = r.j?.[0]?.id;

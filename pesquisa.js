@@ -14,6 +14,24 @@ const COLHER_SOPA_G = 13.7;   // 15 ml de azeite (0,915 g/ml)
 const COLHER_CHA_G = 4.6;     //  5 ml
 const PARTE_MANTEIGA_G = 10;  // barra de 100 g em 10 partes
 
+// Condição de uso da tabela do INSA: a fonte tem de estar visível onde os
+// dados aparecem. O texto é o que o próprio ficheiro pede, sem mudar nada.
+export const FONTE_INSA = 'Fonte: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P.- INSA. v 7.1 - 2026.';
+const AVISO_INSA = 'Valores médios de referência: o alimento que comeste pode ser diferente.';
+
+// Bebidas (valores por 100 ml): medidas habituais em vez de pedir mililitros
+// de cabeça. A primeira é a que aparece escolhida.
+export function medidasBebida(nome) {
+  const n = normalizar(nome);
+  if (/\bcerveja\b/.test(n)) return [['imperial', 200], ['mini', 250], ['garrafa', 330], ['caneca', 500]];
+  if (/\bsidra\b/.test(n)) return [['garrafa', 330], ['copo', 200]];
+  if (/\b(porto|madeira|licoroso)\b/.test(n) || /\blicor\b/.test(n)) return [['cálice', 50], ['copo', 100]];
+  if (/\bespumante\b/.test(n)) return [['flute', 125], ['garrafa', 750]];
+  if (/\bvinho\b/.test(n)) return [['copo', 150], ['garrafa', 750]];
+  if (/\b(aguardente|brandy|gin|rum|whisky)\b/.test(n)) return [['dose', 40], ['dose dupla', 80]];
+  return [];
+}
+
 const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 const plural = (s, n) => (n === 1 ? s : s.endsWith('ão') ? s.slice(0, -2) + 'ões' : s + 's');
 const arred1 = (v) => Math.round(v * 10) / 10;
@@ -52,6 +70,7 @@ export function montarPesquisa({
     placeholder: 'iogurte natural, arroz, pão…', attrs: { enterkeyhint: 'search' } });
   const resultados = h('ul', { id: id('resultados'), className: 'resultados' });
   const notaConflito = h('p', { id: id('nota-conflito'), className: 'nota-fonte oculto' });
+  const notaInsa = h('p', { id: id('nota-insa'), className: 'nota-fonte nota-insa oculto' }, FONTE_INSA);
   const semResultados = h('p', { id: id('sem-resultados'), className: 'nota-fonte oculto' },
     'Nada no catálogo com esse nome. Experimenta o Open Food Facts.');
   const btnOff = h('button', { id: id('btn-off'), type: 'button', className: 'secundario toque' }, 'Procurar no Open Food Facts');
@@ -59,7 +78,7 @@ export function montarPesquisa({
     placeholder: '5601234567892', attrs: { inputmode: 'numeric' } });
   const btnCodigo = h('button', { id: id('btn-codigo'), type: 'button', className: 'secundario toque' }, 'Ler');
   const blocoPesquisa = h('div', { id: id('bloco-pesquisa') },
-    h('label', { htmlFor: id('procura') }, 'Procurar alimento'), procura, resultados, notaConflito, semResultados, btnOff,
+    h('label', { htmlFor: id('procura') }, 'Procurar alimento'), procura, resultados, notaConflito, notaInsa, semResultados, btnOff,
     h('div', { className: 'dupla linha-codigo' },
       h('div', {}, h('label', { htmlFor: id('codigo') }, 'Código de barras'), codigo), btnCodigo),
     separador ? h('p', { className: 'separador' }, separador) : null);
@@ -74,14 +93,16 @@ export function montarPesquisa({
   const escGramas = h('div', { id: id('esc-gramas'), className: 'esc-gramas' });
   const escKcal = h('span', { id: id('esc-kcal'), className: 'num' }, '0');
   const ajuda = h('div', { id: id('ajuda-gordura'), className: 'ajuda-gordura oculto' });
+  const medidas = h('div', { id: id('medidas'), className: 'medidas oculto', attrs: { role: 'group', 'aria-label': 'Medidas habituais' } });
+  const escInsa = h('p', { id: id('esc-insa'), className: 'nota-fonte nota-insa oculto' });
   const btnConfirmar = h('button', { id: id('registar-escolhido'), type: 'button', className: 'principal toque' }, rotuloConfirmar);
   const btnCancelar = h('button', { id: id('cancelar-escolhido'), type: 'button', className: 'toque ligacao' }, 'Escolher outro');
   const escolhidoEl = h('div', { id: id('escolhido'), className: 'escolhido oculto' },
-    escNome, escFonte, unidades, ajuda,
+    escNome, escFonte, unidades, medidas, ajuda,
     h('div', { className: 'dupla' },
       h('div', {}, rotQtd, quantidade, escGramas),
       h('div', { className: 'esc-total' }, escKcal, h('small', {}, ' kcal'))),
-    btnConfirmar, btnCancelar);
+    btnConfirmar, btnCancelar, escInsa);
 
   raiz.replaceChildren(blocoPesquisa, escolhidoEl);
 
@@ -106,7 +127,7 @@ export function montarPesquisa({
         a.marca ? a.marca + ' · ' : null, h('span', { className: 'selo-fonte' }, ROTULO_FONTE[a.fonte] || a.fonte));
       const b = h('button', { type: 'button', className: 'resultado toque' },
         h('span', { className: 'res-esq' }, h('span', { className: 'res-nome' }, a.nome), meta),
-        h('span', { className: 'res-kcal' }, h('span', { className: 'num' }, String(Math.round(a.kcal_100))), h('small', {}, ' kcal/100 g')));
+        h('span', { className: 'res-kcal' }, h('span', { className: 'num' }, String(Math.round(a.kcal_100))), h('small', {}, a.por_ml ? ' kcal/100 ml' : ' kcal/100 g')));
       b.addEventListener('click', () => escolher(a));
       resultados.append(h('li', {}, b));
     }
@@ -127,6 +148,7 @@ export function montarPesquisa({
         + 'Escolhe o que corresponde ao que comeste — a embalagem manda.';
     }
     notaConflito.classList.toggle('oculto', !conflito);
+    notaInsa.classList.toggle('oculto', !todos.some((a) => a.fonte === 'insa'));
     semResultados.classList.toggle('oculto', todos.length > 0 || procura.value.trim().length < 2);
   }
 
@@ -220,6 +242,20 @@ export function montarPesquisa({
     }
   }
 
+  // ------------------------------------------------------------ bebidas
+  function desenharMedidas() {
+    const lista = escolhido && escolhido.por_ml ? medidasBebida(escolhido.nome) : [];
+    medidas.classList.toggle('oculto', !lista.length);
+    medidas.replaceChildren();
+    const q = Number(quantidade.value);
+    for (const [nome, ml] of lista) {
+      const b = h('button', { type: 'button', className: 'chip toque', aria: { pressed: String(q === ml) } },
+        `${nome} · ${ml >= 100 && ml % 10 === 0 ? ml / 10 + ' cl' : ml + ' ml'}`);
+      b.addEventListener('click', () => { quantidade.value = String(ml); atualizarTotal(); });
+      medidas.append(b);
+    }
+  }
+
   // ------------------------------------------------------------ quantidade
   function gramasAtuais() {
     const q = Number(quantidade.value);
@@ -232,14 +268,17 @@ export function montarPesquisa({
     const g = gramasAtuais();
     escGramas.textContent = modoUnidade && g ? `= ${arred1(g)} g` : '';
     if (tipoGordura(escolhido.nome) === 'manteiga') desenharAjuda();
+    if (escolhido.por_ml) desenharMedidas();
   }
   function definirModo(unidade) {
     if (modoUnidade === unidade && quantidade.value) return;
     modoUnidade = unidade;
     modoGramas.setAttribute('aria-pressed', String(!unidade));
     modoUnid.setAttribute('aria-pressed', String(unidade));
-    rotQtd.textContent = unidade ? plural(escolhido.nome_unidade, 2).replace(/^./, (c) => c.toUpperCase()) : 'Gramas';
-    quantidade.value = unidade ? '1' : (tipoGordura(escolhido.nome) ? '' : '100');
+    rotQtd.textContent = unidade ? plural(escolhido.nome_unidade, 2).replace(/^./, (c) => c.toUpperCase())
+      : escolhido.por_ml ? 'Mililitros' : 'Gramas';
+    const bebida = escolhido.por_ml ? medidasBebida(escolhido.nome) : [];
+    quantidade.value = unidade ? '1' : bebida.length ? String(bebida[0][1]) : (tipoGordura(escolhido.nome) ? '' : '100');
     quantidade.step = unidade ? '0.5' : '1';
     atualizarTotal();
   }
@@ -247,14 +286,18 @@ export function montarPesquisa({
     escolhido = a;
     colheres = { sopa: 0, cha: 0 };
     escNome.textContent = a.nome + (a.marca ? ` (${a.marca})` : '');
-    escFonte.textContent = `${Math.round(a.kcal_100)} kcal por 100 g · ${ROTULO_FONTE[a.fonte] || a.fonte}`
+    escFonte.textContent = `${Math.round(a.kcal_100)} kcal por 100 ${a.por_ml ? 'ml' : 'g'} · ${ROTULO_FONTE[a.fonte] || a.fonte}`
       + (a.fonte === 'ia' ? ' — valor estimado, confirma se puderes' : '');
     const temUnidade = Number(a.gramas_unidade) > 0 && a.nome_unidade;
     unidades.classList.toggle('oculto', !temUnidade);
     if (temUnidade) modoUnid.textContent = `${a.nome_unidade} (${arred1(Number(a.gramas_unidade))} g)`;
+    escInsa.replaceChildren();
+    if (a.fonte === 'insa') escInsa.append(FONTE_INSA, ' ', AVISO_INSA);
+    escInsa.classList.toggle('oculto', a.fonte !== 'insa');
     modoUnidade = null;                          // força definirModo a desenhar
     definirModo(!!temUnidade);
     desenharAjuda();
+    desenharMedidas();
     blocoPesquisa.classList.add('oculto');
     esconderAoEscolher.forEach((e) => e.classList.add('oculto'));
     escolhidoEl.classList.remove('oculto');
@@ -269,7 +312,8 @@ export function montarPesquisa({
 
   async function confirmar() {
     const g = gramasAtuais(), kcal = kcalAtuais();
-    if (!(g > 0 && g <= 5000)) { aviso('A quantidade tem de estar entre 1 e 5000 g.', 'erro'); return; }
+    const un = escolhido.por_ml ? 'ml' : 'g';
+    if (!(g > 0 && g <= 5000)) { aviso(`A quantidade tem de estar entre 1 e 5000 ${un}.`, 'erro'); return; }
     if (kcal > 5000) { aviso('Isso passa de 5000 kcal de uma vez. Divide em partes.', 'erro'); return; }
     btnConfirmar.disabled = true;
     try {
@@ -281,10 +325,10 @@ export function montarPesquisa({
         if (r.ok && r.corpo.alimento) alimentoId = r.corpo.alimento.id;
       }
       const n = Number(quantidade.value);
-      const qtdTexto = modoUnidade ? `${n} ${plural(escolhido.nome_unidade, n)} (${arred1(g)} g)` : `${arred1(g)} g`;
+      const qtdTexto = modoUnidade ? `${n} ${plural(escolhido.nome_unidade, n)} (${arred1(g)} g)` : `${arred1(g)} ${un}`;
       const nome = `${escolhido.nome}${escolhido.marca ? ' (' + escolhido.marca + ')' : ''}`;
       await aoConfirmar({
-        nome: nome.slice(0, 140), kcal_100: Number(escolhido.kcal_100), gramas: arred1(g), kcal, qtdTexto,
+        nome: nome.slice(0, 140), kcal_100: Number(escolhido.kcal_100), gramas: arred1(g), unidade: un, kcal, qtdTexto,
         descricao: `${nome} · ${qtdTexto}`.slice(0, 160),
         alimento_id: alimentoId,
         alimento_meu_id: escolhido.fonte === 'meu' ? escolhido.id : null,

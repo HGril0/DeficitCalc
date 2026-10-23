@@ -11,7 +11,12 @@ bash sql/testes/correr-tudo.sh producao   # a história real do Supabase: 01-04 
 ```
 
 O script reconstrói do zero um PostgreSQL que imita o Supabase e corre todas
-as baterias. Os dois modos têm de dar o mesmo total (125 a 23/10/2026).
+as baterias. Os dois modos têm de dar o mesmo total (190 a 23/10/2026).
+
+A bateria 09 (INSA) importa ela própria o `sql/13-insa-dados.sql`, porque as
+anteriores esvaziam o catálogo para terem dados conhecidos. Por isso o
+`correr-tudo.sh` tem de ser corrido a partir da raiz do projeto (já faz o
+`cd` sozinho).
 
 Os ficheiros com `correcao` no nome só servem para atualizar uma base de
 dados criada com versões antigas — numa instalação nova não se correm,

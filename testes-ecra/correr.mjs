@@ -330,6 +330,68 @@ async function juntarIngrediente(a, texto, gramas) {
   T('E23 o segundo apaga e volta à lista vazia', (await a.page.evaluate(() => window.__BD__.receitas.length)) === 0 && await a.page.locator('#sem-receitas').isVisible());
   await limpo('E22/E23', a); await a.ctx.close(); }
 
+// ---------------------------------------------------------------- INSA
+const INSA = [
+  { id: 'insa-726', nome: 'Cerveja branca', marca: null, kcal_100: 30, fonte: 'insa', por_ml: true, gramas_unidade: null, nome_unidade: null },
+  { id: 'insa-714', nome: 'Vinho maduro tinto, teor alcoólico <12,5% vol.', marca: null, kcal_100: 72, fonte: 'insa', por_ml: true, gramas_unidade: null, nome_unidade: null },
+  { id: 'insa-503', nome: 'Açúcar branco', marca: null, kcal_100: 397, fonte: 'insa', por_ml: false, gramas_unidade: null, nome_unidade: null },
+  { id: 'cb-nutella', nome: 'Nutella', marca: 'Ferrero', kcal_100: 539, fonte: 'codigo_barras', gramas_unidade: null, nome_unidade: null, codigo_barras: '3017620422003' },
+];
+const FONTE = 'Fonte: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P.- INSA. v 7.1 - 2026.';
+
+// E24 bebida por ml, com medidas habituais
+{ const a = await abrir('hoje.html', { alimentos: INSA });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'cerveja'); await a.page.waitForTimeout(600);
+  T('E24 o resultado diz kcal/100 ml', (await a.page.textContent('#resultados')).includes('kcal/100 ml'), await a.page.textContent('#resultados'));
+  await a.page.locator('#resultados button').first().click(); await a.page.waitForTimeout(150);
+  T('E24 pede mililitros e começa numa imperial (200 ml)', (await a.page.textContent('#rot-quantidade')) === 'Mililitros' && (await a.page.inputValue('#quantidade')) === '200');
+  T('E24 o painel diz por 100 ml', (await a.page.textContent('#esc-fonte')).includes('30 kcal por 100 ml'));
+  const chips = await a.page.locator('#medidas button').allTextContents();
+  T('E24 medidas: imperial, mini, garrafa, caneca', chips.join('|') === 'imperial · 20 cl|mini · 25 cl|garrafa · 33 cl|caneca · 50 cl', chips.join('|'));
+  await a.page.locator('#medidas button').filter({ hasText: 'garrafa' }).click(); await a.page.waitForTimeout(100);
+  T('E24 garrafa de 33 cl a 30 kcal/100 ml dá 99', (await a.page.textContent('#esc-kcal')) === '99', await a.page.textContent('#esc-kcal'));
+  T('E24 a medida escolhida fica marcada', (await a.page.locator('#medidas button[aria-pressed="true"]').textContent()).startsWith('garrafa'));
+  await a.page.click('#registar-escolhido'); await a.page.waitForTimeout(500);
+  const ins = await a.page.evaluate(() => window.__PEDIDOS__.filter(p => p.tabela === 'registos' && p.modo === 'insert').pop().corpo);
+  T('E24 fica "Cerveja branca · 330 ml"', ins.descricao === 'Cerveja branca · 330 ml' && ins.kcal === 99 && ins.gramas === 330 && ins.fonte === 'insa', JSON.stringify(ins));
+  await limpo('E24', a); await a.ctx.close(); }
+
+// E25 vinho: copo e garrafa; acima de 5000 ml recusa com a unidade certa
+{ const a = await abrir('hoje.html', { alimentos: INSA });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'vinho tinto'); await a.page.waitForTimeout(600);
+  await a.page.locator('#resultados button').first().click(); await a.page.waitForTimeout(150);
+  const chips = await a.page.locator('#medidas button').allTextContents();
+  T('E25 vinho: copo 15 cl e garrafa 75 cl, começa no copo', chips.join('|') === 'copo · 15 cl|garrafa · 75 cl' && (await a.page.inputValue('#quantidade')) === '150', chips.join('|'));
+  T('E25 copo de 150 ml a 72 kcal dá 108', (await a.page.textContent('#esc-kcal')) === '108');
+  await a.page.fill('#quantidade', '6000'); await a.page.click('#registar-escolhido'); await a.page.waitForTimeout(300);
+  T('E25 a mensagem de limite fala em ml', (await a.page.textContent('#msg')).includes('5000 ml'), await a.page.textContent('#msg'));
+  await limpo('E25', a); await a.ctx.close(); }
+
+// E26 a fonte do INSA aparece onde os dados aparecem, e só aí
+{ const a = await abrir('hoje.html', { alimentos: INSA });
+  await abrirAlmoco(a);
+  await a.page.fill('#procura', 'nutella'); await a.page.waitForTimeout(600);
+  T('E26 sem resultados do INSA, sem nota do INSA', await a.page.locator('#nota-insa').isHidden());
+  await a.page.fill('#procura', 'acucar'); await a.page.waitForTimeout(600);
+  T('E26 "acucar" sem acento encontra Açúcar branco', (await a.page.textContent('#resultados')).includes('Açúcar branco'));
+  T('E26 com resultado do INSA, a fonte está visível com o texto exato', await a.page.locator('#nota-insa').isVisible() && (await a.page.textContent('#nota-insa')) === FONTE);
+  await a.page.locator('#resultados button').first().click(); await a.page.waitForTimeout(150);
+  const esc = await a.page.textContent('#esc-insa');
+  T('E26 no alimento escolhido também, com o aviso de que pode diferir', await a.page.locator('#esc-insa').isVisible() && esc.includes(FONTE) && esc.includes('pode ser diferente'), esc);
+  T('E26 açúcar é por gramas (sem medidas de bebida)', (await a.page.textContent('#rot-quantidade')) === 'Gramas' && await a.page.locator('#medidas').isHidden());
+  await a.page.click('#cancelar-escolhido');
+  await a.page.fill('#procura', 'nutella'); await a.page.waitForTimeout(600);
+  await a.page.locator('#resultados button').first().click(); await a.page.waitForTimeout(150);
+  T('E26 num produto de código de barras não aparece a fonte do INSA', await a.page.locator('#esc-insa').isHidden());
+  await limpo('E26', a); await a.ctx.close(); }
+
+// E27 o perfil tem a fonte de forma permanente
+{ const a = await abrir('perfil.html');
+  T('E27 o perfil mostra a fonte do INSA', (await a.page.textContent('#fontes-dados')).includes(FONTE) && await a.page.locator('#fontes-dados').isVisible());
+  await limpo('E27', a); await a.ctx.close(); }
+
 await browser.close(); srv.kill();
 let falhas = 0;
 for (const r of resultados) { if (!r.ok) falhas++; console.log((r.ok ? 'PASSA' : '>>> FALHA') + ' | ' + r.nome + (r.ok || !r.obs ? '' : ' | ' + r.obs)); }

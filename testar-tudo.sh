@@ -10,7 +10,7 @@ python3 - <<'PY' || falhou=1
 import pathlib, sys
 maus = []
 for f in pathlib.Path('.').rglob('*'):
-    if not f.is_file() or '.git' in f.parts or f.suffix not in {'.js','.ts','.mjs','.html','.css','.sql','.json','.md','.sh','.py'}:
+    if not f.is_file() or '.git' in f.parts or f.suffix not in {'.js','.ts','.mjs','.html','.css','.sql','.json','.md','.sh','.py','.tsv'}:
         continue
     for n, linha in enumerate(f.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
         for c in linha:

@@ -129,11 +129,20 @@
       }), error: null };
     }
     if (nome === 'procurar_alimento') {
-      const t = String(args?.p_texto || '').toLowerCase();
-      if (t.length < 2) return { data: [], error: null };
-      const meus_ = bd.alimentos_meus.map(a => ({ ...a, fonte: 'meu', meu: true }));
-      const cat = bd.alimentos.map(({ codigo_barras, ...a }) => ({ ...a, meu: false }));  // como o rpc real
-      return { data: [...meus_, ...cat].filter(a => a.nome.toLowerCase().includes(t)), error: null };
+      // Mesmas regras do sql/12-insa.sql: sem acentos, todas as palavras por
+      // qualquer ordem, plural simples, o que começa pela pesquisa primeiro.
+      const sem = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const t = sem(String(args?.p_texto || '').slice(0, 60)).trim();
+      const ws = t.split(/\s+/).filter(Boolean);
+      if (t.length < 2 || ws.length > 8) return { data: [], error: null };
+      const tem = (n, w) => n.includes(w) || (w.length >= 4 && w.endsWith('s') && n.includes(w.replace(/(oe|ae)s$/, 'aos').replace(/s$/, '')));
+      const meus_ = bd.alimentos_meus.map(a => ({ ...a, fonte: 'meu', meu: true, por_ml: false }));
+      const cat = bd.alimentos.map(({ codigo_barras, ...a }) => ({ por_ml: false, ...a, meu: false }));  // como o rpc real
+      const ordem = (a) => (a.meu ? 0 : { insa: 1, codigo_barras: 2 }[a.fonte] || 3);
+      const r = [...meus_, ...cat].filter(a => ws.every(w => tem(sem(a.nome), w)))
+        .sort((x, y) => (ordem(x) === 0) !== (ordem(y) === 0) ? ordem(x) - ordem(y)
+          : (sem(y.nome).startsWith(t) - sem(x.nome).startsWith(t)) || ordem(x) - ordem(y) || x.nome.length - y.nome.length);
+      return { data: r.slice(0, 20), error: null };
     }
     return erro('PGRST202', 'função desconhecida ' + nome);
   }
