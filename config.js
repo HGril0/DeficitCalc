@@ -15,10 +15,14 @@ export const CONFIG = {
   // pessoa pode criar um projeto .pages.dev e passaria a receber tokens
   // de login dos teus utilizadores. Só URLs exactos.
   //
-  // Durante a mudança de alojamento, mantém os dois URLs na lista do
-  // Supabase e muda só esta linha para testar cada um.
-  // Antigo (GitHub Pages, a desligar): 'https://hgril0.github.io/DeficitCalc/'
-  REDIRECT_TO: 'https://restam.pages.dev/',
+  // Durante a mudança de alojamento a app vive em dois sítios. O endereço de
+  // regresso escolhe-se pelo sítio onde a página está aberta, mas só entre
+  // os desta lista fechada: um sítio que não esteja aqui cai no endereço
+  // final, nunca num endereço construído a partir da barra do browser.
+  REDIRECT_TO: ({
+    'https://hgril0.github.io': 'https://hgril0.github.io/DeficitCalc/',
+    'https://restam.pages.dev': 'https://restam.pages.dev/',
+  })[globalThis.location?.origin] || 'https://restam.pages.dev/',
 
   // muda para 'implicit' e volta a testar.
   FLOW_TYPE: 'pkce',
